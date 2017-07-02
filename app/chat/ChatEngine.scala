@@ -7,14 +7,15 @@ import play.api.libs.json.{Format, Json}
 import socketio._
 
 import scala.concurrent.Future
-
+import play.api.libs.functional.syntax._
 
 object ChatProtocol {
 
   case class ChatMessage(message: String)
 
   object ChatMessage {
-    implicit val format: Format[ChatMessage] = Json.format
+    implicit val format: Format[ChatMessage] =
+      implicitly[Format[String]].inmap(ChatMessage.apply, _.message)
   }
 
   val decoder = SocketIOEventDecoder.compose {
@@ -31,8 +32,10 @@ class ChatEngine(engineIOFactory: EngineIOFactory)(implicit mat: Materializer) {
 
   import ChatProtocol._
 
-  private val (chatSink, chatSource) = MergeHub.source[ChatMessage]
-    .toMat(BroadcastHub.sink)(Keep.both).run
+  private val (chatSink, chatSource) = MergeHub.source[ChatMessage].map { message =>
+    println("Got message in chat engine: " + message)
+    message
+  }.toMat(BroadcastHub.sink)(Keep.both).run
 
   private val engine = engineIOFactory("chatengine",
     (request, sid) => Future.successful(Some(SocketIOSession(sid, NotUsed)))

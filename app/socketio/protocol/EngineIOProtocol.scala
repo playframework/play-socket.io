@@ -30,19 +30,19 @@ object EngineIOTransport {
   }
 }
 
-case class EngineIOOpenMessage(sid: String, upgrades: Seq[String], pingInterval: FiniteDuration, pingTimeout: FiniteDuration)
+case class EngineIOOpenMessage(sid: String, upgrades: Seq[EngineIOTransport], pingInterval: FiniteDuration, pingTimeout: FiniteDuration)
 
 object EngineIOOpenMessage {
   implicit val reads: Reads[EngineIOOpenMessage] = (
     (__ \ "sid").read[String] ~
-    (__ \ "upgrades").readWithDefault[Seq[String]](Nil) ~
+    (__ \ "upgrades").readWithDefault[Seq[String]](Nil).map(_.map(EngineIOTransport.fromName)) ~
     (__ \ "pingInterval").read[Long].map(_.millis) ~
     (__ \ "pingTimeout").read[Long].map(_.millis)
   ).apply(EngineIOOpenMessage.apply _)
 
   implicit val writes: Writes[EngineIOOpenMessage] = (
     (__ \ "sid").write[String] ~
-    (__ \ "upgrades").write[Seq[String]] ~
+    (__ \ "upgrades").write[Seq[String]].contramap[Seq[EngineIOTransport]](_.map(_.name)) ~
     (__ \ "pingInterval").write[Long].contramap[FiniteDuration](_.toMillis) ~
     (__ \ "pingTimeout").write[Long].contramap[FiniteDuration](_.toMillis)
   ).apply(o => (o.sid, o.upgrades, o.pingInterval, o.pingTimeout))

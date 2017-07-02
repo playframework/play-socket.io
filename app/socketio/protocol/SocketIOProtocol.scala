@@ -27,41 +27,41 @@ object SocketIOPacketType {
     case '4' => Error
     case '5' => BinaryEvent
     case '6' => BinaryAck
-    case _ => throw SocketIOEncodingException("Unknown socket.io packet type: " + char)
+    case _ => throw SocketIOEncodingException("", "Unknown socket.io packet type: " + char)
   }
 }
 
 sealed trait SocketIOPacket {
-  val packetType: SocketIOPacketType
+  def packetType: SocketIOPacketType
   val namespace: Option[String]
 }
 
 case class SocketIOConnectPacket(namespace: Option[String]) extends SocketIOPacket {
-  override case object packetType extends SocketIOPacketType.Connect
+  override def packetType = SocketIOPacketType.Connect
 }
 
 case class SocketIODisconnectPacket(namespace: Option[String]) extends SocketIOPacket {
-  override case object packetType extends SocketIOPacketType.Disconnect
+  override def packetType = SocketIOPacketType.Disconnect
 }
 
 case class SocketIOEventPacket(namespace: Option[String], data: Seq[JsValue], id: Option[Long]) extends SocketIOPacket {
-  override case object packetType extends SocketIOPacketType.Event
+  override def packetType = SocketIOPacketType.Event
 }
 
 case class SocketIOAckPacket(namespace: Option[String], data: Seq[JsValue], id: Long) extends SocketIOPacket {
-  override case object packetType extends SocketIOPacketType.Ack
+  override def packetType = SocketIOPacketType.Ack
 }
 
 case class SocketIOErrorPacket(namespace: Option[String], data: JsValue) extends SocketIOPacket {
-  override case object packetType extends SocketIOPacketType.Error
+  override def packetType = SocketIOPacketType.Error
 }
 
 case class SocketIOBinaryEventPacket(namespace: Option[String], data: Seq[Either[JsValue, ByteString]], id: Option[Long]) extends SocketIOPacket {
-  override case object packetType extends SocketIOPacketType.Connect
+  override def packetType = SocketIOPacketType.BinaryEvent
 }
 
 case class SocketIOBinaryAckPacket(namespace: Option[String], data: Seq[Either[JsValue, ByteString]], id: Long) extends SocketIOPacket {
-  override case object packetType extends SocketIOPacketType.Connect
+  override def packetType = SocketIOPacketType.BinaryAck
 }
 
 object SocketIOPacket {
@@ -99,39 +99,37 @@ object SocketIOPacket {
     // Encode namespace
     packet.namespace.foreach { ns =>
       message ++= ns
+      message += ','
+    }
+
+    def encodeData(data: JsValue, id: Option[Long]): Unit = {
+      if (packet.namespace.isDefined) {
+        message += ','
+      }
+      id.foreach(id =>
+        message ++= id.toString
+      )
+      message ++= Json.stringify(data)
     }
 
     // Now the payload
     val extraPackets = packet match {
       case SocketIOEventPacket(_, data, id) =>
-        message += ','
-        id.foreach(id =>
-          message ++= id.toString
-        )
-        message ++= Json.stringify(JsArray(data))
+        encodeData(JsArray(data), id)
         Nil
       case SocketIOAckPacket(_, data, id) =>
-        message += ','
-        message ++= id.toString
-        message ++= Json.stringify(JsArray(data))
+        encodeData(JsArray(data), Some(id))
         Nil
       case SocketIOErrorPacket(_, data) =>
-        message += ','
-        message ++= Json.stringify(data)
+        encodeData(data, None)
         Nil
       case SocketIOBinaryEventPacket(_, data, id) =>
-        message += ','
-        id.foreach(id =>
-          message ++= id.toString
-        )
         val (dataWithPlaceholders, extraPackets) = fillInPlaceholders(data)
-        message ++= Json.stringify(JsArray(dataWithPlaceholders))
+        encodeData(JsArray(dataWithPlaceholders), id)
         extraPackets
       case SocketIOBinaryAckPacket(_, data, id) =>
-        message += ','
-        message ++= id.toString
         val (dataWithPlaceholders, extraPackets) = fillInPlaceholders(data)
-        message ++= Json.stringify(JsArray(dataWithPlaceholders))
+        encodeData(JsArray(dataWithPlaceholders), Some(id))
         extraPackets
       case _ =>
         // All other packets have no additional data
@@ -147,53 +145,62 @@ object SocketIOPacket {
     */
   def decode(text: String): (SocketIOPacket, Int) = {
     if (text.isEmpty) {
-      throw SocketIOEncodingException("Empty socket.io packet")
+      throw SocketIOEncodingException(text, "Empty socket.io packet")
     }
 
-    case object packetType extends SocketIOPacketType.fromChar(text.head)
-    val (placeholders, startNamespace) = if (packetType == SocketIOPacketType.BinaryAck || packetType == SocketIOPacketType.BinaryEvent) {
+    val packetType = SocketIOPacketType.fromChar(text.head)
+    val (placeholders, namespaceStart) = if (packetType == SocketIOPacketType.BinaryAck || packetType == SocketIOPacketType.BinaryEvent) {
       val placeholdersSeparator = text.indexOf('-', 1)
       if (placeholdersSeparator == -1) {
-        throw SocketIOEncodingException("Malformed binary socket.io packet, missing placeholder separator")
+        throw SocketIOEncodingException(text, s"Malformed binary socket.io packet, missing placeholder separator")
       }
       val placeholders = try {
         text.substring(1, placeholdersSeparator).toInt
       } catch {
         case _: NumberFormatException =>
-          throw SocketIOEncodingException("Malformed binary socket.io packet, num placeholders is not a number")
+          throw SocketIOEncodingException(text, "Malformed binary socket.io packet, num placeholders is not a number: '" +
+            text.substring(1, placeholdersSeparator) + "'")
       }
       (placeholders, placeholdersSeparator + 1)
     } else {
       (0, 1)
     }
 
-    val dataSeparator = text.indexOf(',', startNamespace)
-    val namespace = Some(if (dataSeparator == -1) {
-      text.substring(startNamespace)
+
+    val (namespace, dataStart) = if (text.length > namespaceStart && text(namespaceStart) == '/') {
+      val namespaceEnd = text.indexOf(',', namespaceStart)
+      if (namespaceEnd == -1) {
+        throw SocketIOEncodingException(text, "Expected ',' to end namespace declaration")
+      }
+      (Some(text.substring(namespaceStart, namespaceEnd)), namespaceEnd + 1)
     } else {
-      text.substring(startNamespace, dataSeparator)
-    }).filter(_.nonEmpty)
+      (None, namespaceStart)
+    }
 
-    val (index, args) = if (dataSeparator != -1) {
-      val argsStart = text.indexOf('[', dataSeparator + 1)
+    val (index, args) = if (text.length > dataStart) {
+      val argsStart = text.indexOf('[', dataStart)
 
-      val index = if (argsStart - dataSeparator > 1) {
+      if (argsStart == -1) {
+        throw SocketIOEncodingException(text, s"Expected JSON array open after data separator, but got '${text.substring(dataStart)}'")
+      }
+
+      val index = if (argsStart - dataStart >= 1) {
         try {
-          Some(text.substring(dataSeparator + 1, argsStart).toLong)
+          Some(text.substring(dataStart, argsStart).toLong)
         } catch {
           case _: NumberFormatException =>
-            throw SocketIOEncodingException("Malformed socket.io packet, index is not a number")
+            throw SocketIOEncodingException(text, "Malformed socket.io packet, index is not a number")
         }
       } else {
         None
       }
 
       val argsData = text.substring(argsStart)
-      val args = try{
+      val args = try {
         Json.parse(argsData)
       } catch {
         case e: Exception =>
-          throw SocketIOEncodingException("Error parsing socket.io args", e)
+          throw SocketIOEncodingException(text, "Error parsing socket.io args", e)
       }
 
       (index, Some(args))
@@ -217,7 +224,7 @@ object SocketIOPacket {
       case (SocketIOPacketType.BinaryAck, Some(data: JsArray)) if index.isDefined =>
         SocketIOBinaryAckPacket(namespace, data.value.map(Left.apply), index.get)
       case _ =>
-        throw SocketIOEncodingException("Malformed socket.io packet")
+        throw SocketIOEncodingException(text, "Malformed socket.io packet")
     }
 
     (socketIOPacket, placeholders)
@@ -243,4 +250,5 @@ object SocketIOPacket {
   }
 }
 
-case class SocketIOEncodingException(message: String, cause: Exception = null) extends RuntimeException(message, cause)
+case class SocketIOEncodingException(packet: String, message: String, cause: Exception = null)
+  extends RuntimeException(s"Error decoding socket IO packet '${packet.take(80)}${if (packet.length > 80) "..." else ""}': $message", cause)

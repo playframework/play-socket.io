@@ -1,7 +1,7 @@
 package socketio
 
 import akka.{Done, NotUsed}
-import akka.actor.{Actor, ActorLogging, ActorRef, DeadLetterSuppression, Props, Status}
+import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, DeadLetterSuppression, Props, Status}
 import akka.pattern.pipe
 import akka.stream.scaladsl._
 import akka.stream._
@@ -23,6 +23,7 @@ object SocketIOSessionActor {
   case class MaybeDisconnect(namespace: String, error: Option[String]) extends DeadLetterSuppression
   case class PulledPackets(packets: Seq[EngineIOPacket])
   case class SendAck(namespace: Option[String], args: Seq[Either[JsValue, ByteString]], id: Long)
+  case class IdleRetrieveRequester(requester: ActorRef, requestId: String, transport: EngineIOTransport, retrieveRequestId: Long)
   case object Tick extends DeadLetterSuppression
   case object PacketsPushed
 
@@ -66,7 +67,9 @@ class SocketIOSessionActor[S](
   // The current connection requesting packets. This is set when a batch of packets is requested.
   // There can only be one active packet requester. If this is Some, then packetsToSend must be
   // empty.
-  private var packetRequesters = Map.empty[EngineIOTransport, (ActorRef, String)]
+  private var packetRequesters = Map.empty[EngineIOTransport, RetrieveRequester]
+
+  private var retrieveRequestCounter = 0l
   // Whether we are currently pulling packets from the sink queue or not. Must be true if
   // packetsToSend is empty.
   private var currentlyPullingPackets: Boolean = false
@@ -172,7 +175,7 @@ class SocketIOSessionActor[S](
     case Connected(session) =>
       log.debug("{} - Connection successful", sid)
       sender ! EngineIOPacket(EngineIOPacketType.Open,
-        EngineIOOpenMessage(sid, Seq(), pingInterval = config.pingInterval,
+        EngineIOOpenMessage(sid, config.transports.filterNot(_ == activeTransport), pingInterval = config.pingInterval,
           pingTimeout = config.pingTimeout))
 
       doConnect(session)
@@ -186,13 +189,17 @@ class SocketIOSessionActor[S](
     // If the session has timed out (ie, we haven't received anything from the client)
     // stop.
     if (sessionTimeout.isOverdue()) {
-      log.debug("{} - Shutting down session due to timeout {}", sid, sessionTimeout)
+      log.debug("{} - Shutting down session due to timeout", sid)
       context.stop(self)
     } else {
       ackFunctions = ackFunctions.collect {
         case item @ (_, (deadline, _)) if deadline.hasTimeLeft() => item
       }
     }
+  }
+
+  private def resetTimeout(): Unit = {
+    sessionTimeout = config.pingTimeout.fromNow
   }
 
   private def doConnect(session: SocketIOSession[S]): Unit = {
@@ -256,14 +263,13 @@ class SocketIOSessionActor[S](
 
     case Retrieve(_, transport, requestId) =>
 
-      sessionTimeout = config.pingTimeout.fromNow
-
       // First, if there's already a requester, then replace it
       packetRequesters.get(transport) match {
-        case Some((existing, existingRequestId)) =>
+        case Some(RetrieveRequester(existing, existingRequestId, _, _, idleTask)) =>
           log.debug("{} : {}@{} - Retrieve with existing requester: {}, telling request to go away", sid, requestId, transport, existingRequestId)
           existing ! GoAway
-          packetRequesters += (transport -> (sender, requestId))
+          idleTask.cancel()
+          storeRequester(sender, requestId, transport)
         case None if transport != activeTransport =>
           packetsToSendByNonActiveTransport.get(transport) match {
             case Some(packets) =>
@@ -271,11 +277,11 @@ class SocketIOSessionActor[S](
               sender ! Packets(sid, transport, packets, requestId)
             case None =>
               log.debug("{} : {}@{} - Retrieve from non active transport, waiting", sid, requestId, transport)
-              packetRequesters += (transport -> (sender, requestId))
+              storeRequester(sender, requestId, transport)
           }
         case None if packetsToSend.isEmpty =>
           log.debug("{} : {}@{} - Retrieve while no packets, waiting", sid, requestId, transport)
-          packetRequesters += (transport -> (sender, requestId))
+          storeRequester(sender, requestId, transport)
         case None =>
           // We have packets to send
           log.debug("{} : {}@{} - Retrieve with {} packets to send", sid, requestId, transport, packetsToSend.length)
@@ -284,16 +290,25 @@ class SocketIOSessionActor[S](
           requestMorePackets()
       }
 
+    case IdleRetrieveRequester(requester, requestId, transport, retrieveRequestId) =>
+      if (packetRequesters.get(transport).exists(_.retrieveRequestId == retrieveRequestId)) {
+        log.debug("{} : {}@{} - Request idle, sending back no packets", sid, requestId, transport)
+        requester ! Packets(sid, transport, Nil, requestId)
+        packetRequesters -= transport
+      }
+
     case PulledPackets(packets) =>
       log.debug("{} - Pulled {} packets", sid, packets.size)
 
       currentlyPullingPackets = false
 
       packetRequesters.get(activeTransport) match {
-        case Some((requester, requestId)) =>
+        case Some(RetrieveRequester(requester, requestId, _, _, idleTask)) =>
           log.debug("{} : {}@{} - Sending {} packets", sid, requestId, activeTransport, packets.size)
           requester ! Packets(sid, activeTransport, packets, requestId)
+          idleTask.cancel()
           packetRequesters -= activeTransport
+          requestMorePackets()
         case None =>
           packetsToSend ++= packets
           if (packetsToSend.size < 8) {
@@ -303,7 +318,7 @@ class SocketIOSessionActor[S](
 
     case Packets(_, transport, packets, requestId) =>
       log.debug("{} : {}@{} - Received {} incoming packets", sid, requestId, transport, packets.size)
-      sessionTimeout = config.pingTimeout.fromNow
+      resetTimeout()
 
       handleIncomingEngineIOPackets(transport, packets)
 
@@ -366,14 +381,16 @@ class SocketIOSessionActor[S](
         log.debug("{} - {} Upgrading")
         activeTransport = transport
         packetRequesters.foreach {
-          case (thisTransport, (requester, requestId)) if thisTransport == activeTransport =>
+          case (thisTransport, RetrieveRequester(requester, requestId, _, _, idleTask)) if thisTransport == activeTransport =>
             if (packetsToSend.nonEmpty) {
               requester ! Packets(sid, transport, packetsToSend, requestId)
+              idleTask.cancel()
               packetsToSend = Nil
               packetRequesters -= transport
             }
-          case (_, (requester, _)) =>
+          case (_, RetrieveRequester(requester, _, _, _, idleTask)) =>
             requester ! GoAway
+            idleTask.cancel()
             packetRequesters -= transport
 
         }
@@ -609,9 +626,10 @@ class SocketIOSessionActor[S](
 
   private def sendPackets(packets: Seq[EngineIOPacket], transport: EngineIOTransport = activeTransport) = {
     packetRequesters.get(transport) match {
-      case Some((actor, requestId)) =>
+      case Some(RetrieveRequester(requester, requestId, _, _, idleTask)) =>
         log.debug("{} : {}@{} - Sending {} packets direct", sid, requestId, transport, packets.size)
-        actor ! Packets(sid, transport, packets)
+        requester ! Packets(sid, transport, packets)
+        idleTask.cancel()
         packetRequesters -= transport
       case None if transport == activeTransport =>
         packetsToSend ++= packets
@@ -623,6 +641,15 @@ class SocketIOSessionActor[S](
   private def optNamespace(namespace: String): Option[String] =
     Some(namespace).filterNot(_ == "/")
 
+  def storeRequester(requester: ActorRef, requestId: String, transport: EngineIOTransport) = {
+    val retrieveRequestId = retrieveRequestCounter
+    retrieveRequestCounter += 1
+    val retrieveRequester = RetrieveRequester(sender, requestId, transport, retrieveRequestId,
+      context.system.scheduler.scheduleOnce(config.retrieveRequestIdleResponse, self,
+        IdleRetrieveRequester(requester, requestId, transport, retrieveRequestId)))
+
+    packetRequesters += (transport -> retrieveRequester)
+  }
 }
 
 private sealed trait NamespacedEventOrDisconnect
@@ -632,3 +659,5 @@ private case class DisconnectNamespace(namespace: String) extends NamespacedEven
 private class ActorSocketIOEventAck(sessionActor: ActorRef, namespace: Option[String], id: Long) extends SocketIOEventAck {
   override def apply(args: Seq[Either[JsValue, ByteString]]) = sessionActor ! SendAck(namespace, args, id)
 }
+
+case class RetrieveRequester(requester: ActorRef, id: String, transport: EngineIOTransport, retrieveRequestId: Long, idleTask: Cancellable)

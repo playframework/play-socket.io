@@ -24,7 +24,9 @@
 <script>
     $(function () {
         var socket = io({
-            // transports: ['websocket']
+            transports: ['websocket'],
+            // forceBase64: true,
+            placeholderToAllowCommentingOutWithNoCommas: false
         });
         $('form').submit(function(){
             socket.emit('chat message', $('#m').val());

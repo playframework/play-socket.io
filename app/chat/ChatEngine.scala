@@ -4,7 +4,7 @@ import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.{BroadcastHub, Flow, Keep, MergeHub}
 import akka.util.ByteString
-import play.api.libs.json.{Format, Json}
+import play.api.libs.json.Format
 import play.engineio._
 
 import scala.concurrent.Future
@@ -28,7 +28,7 @@ object ChatProtocol {
   }
 
   val encoder = encoders {
-    case (_: ChatMessage, _: (String => Unit)) => encodeJson[ChatMessage]("chat message").withAck(SocketIOAckDecoder { msg =>
+    case (_: ChatMessage, _) => encodeJson[ChatMessage]("chat message").withAck(SocketIOAckDecoder { msg =>
       msg.headOption.flatMap(_.right.toOption).map(_.utf8String).getOrElse(throw new RuntimeException("Missing ack argument"))
     })
   }

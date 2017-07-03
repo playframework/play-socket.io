@@ -361,20 +361,7 @@ class SocketIOSessionActor[S](
 
     packets.foreach {
       case BinaryEngineIOPacket(EngineIOPacketType.Message, bytes) =>
-        currentReceivingBinaryPacket match {
-          case Some((packet, parts)) =>
-            currentBinaryPacketParts :+= bytes
-            if (parts == currentBinaryPacketParts.size) {
-
-              eventsToPush ++= handleIncomingSocketIOPacket(packet)
-
-              currentBinaryPacketParts = IndexedSeq.empty
-              currentReceivingBinaryPacket = None
-            }
-
-          case None =>
-            sendError("/", "Received a binary engine.io packet, but not currently receiving a binary socket.io packet.")
-        }
+        eventsToPush ++= handleBinaryPacket(transport, requestId, bytes)
 
       case Utf8EngineIOPacket(EngineIOPacketType.Message, text) =>
         cleanUpCurrentBinary()
@@ -390,36 +377,17 @@ class SocketIOSessionActor[S](
         context.stop(self)
 
       case Utf8EngineIOPacket(EngineIOPacketType.Upgrade, _) =>
-        upgradingFromPollingHack = false
-        debug(requestId, transport, "Upgrading from {}", activeTransport)
-        activeTransport = transport
-        retrieveRequesters.foreach {
-          case (thisTransport, RetrieveRequester(requester, retrieveRequestId)) if thisTransport == activeTransport =>
-            if (packetsToSend.nonEmpty) {
-              requester ! Packets(sid, transport, packetsToSend, retrieveRequestId)
-              packetsToSend = Nil
-              retrieveRequesters -= transport
-            }
-          case (_, RetrieveRequester(requester, _)) =>
-            requester ! GoAway
-            retrieveRequesters -= transport
-        }
+        handleUpgrade(transport, requestId)
 
       case Utf8EngineIOPacket(EngineIOPacketType.Noop, _) =>
         // Noop, ignore.
 
       case Utf8EngineIOPacket(EngineIOPacketType.Ping, data) =>
-        if (data == "probe" && activeTransport == Polling) {
-          upgradingFromPollingHack = true
-          retrieveRequesters.get(Polling).foreach { requester =>
-            debug(requestId, transport, "Telling {}@{} to go away to work around engine.io upgrade race condition",
-              requester.requestId, Polling)
-            requester.requester ! GoAway
-            retrieveRequesters -= Polling
-          }
-        }
-        sendPackets(Seq(Utf8EngineIOPacket(EngineIOPacketType.Pong, data)), transport)
+        handlePing(transport, requestId, data)
 
+      case unexpected =>
+        // Shouldn't happen
+        sendError("/", s"Unexpected ${unexpected.packetEncodingName} packet with type ${unexpected.typeId}")
     }
 
     if (eventsToPush.nonEmpty) {
@@ -433,6 +401,56 @@ class SocketIOSessionActor[S](
       }
     } else {
       sender ! Done
+    }
+  }
+
+  private def handlePing(transport: EngineIOTransport, requestId: String, data: String) = {
+    if (data == "probe" && activeTransport == Polling) {
+      upgradingFromPollingHack = true
+      retrieveRequesters.get(Polling).foreach { requester =>
+        debug(requestId, transport, "Telling {}@{} to go away to work around engine.io upgrade race condition",
+          requester.requestId, Polling)
+        requester.requester ! GoAway
+        retrieveRequesters -= Polling
+      }
+    }
+    sendPackets(Seq(Utf8EngineIOPacket(EngineIOPacketType.Pong, data)), transport)
+  }
+
+  private def handleUpgrade(transport: EngineIOTransport, requestId: String) = {
+    upgradingFromPollingHack = false
+    debug(requestId, transport, "Upgrading from {}", activeTransport)
+    activeTransport = transport
+    retrieveRequesters.foreach {
+      case (thisTransport, RetrieveRequester(requester, retrieveRequestId)) if thisTransport == activeTransport =>
+        if (packetsToSend.nonEmpty) {
+          requester ! Packets(sid, transport, packetsToSend, retrieveRequestId)
+          packetsToSend = Nil
+          retrieveRequesters -= transport
+        }
+      case (_, RetrieveRequester(requester, _)) =>
+        requester ! GoAway
+        retrieveRequesters -= transport
+    }
+  }
+
+  private def handleBinaryPacket(transport: EngineIOTransport, requestId: String, bytes: ByteString): Seq[NamespacedEventOrDisconnect] = {
+    currentReceivingBinaryPacket match {
+      case Some((packet, parts)) =>
+        currentBinaryPacketParts :+= bytes
+        if (parts == currentBinaryPacketParts.size) {
+
+          currentBinaryPacketParts = IndexedSeq.empty
+          currentReceivingBinaryPacket = None
+
+          handleIncomingSocketIOPacket(packet).toSeq
+        } else {
+          Nil
+        }
+
+      case None =>
+        sendError("/", "Received a binary engine.io packet, but not currently receiving a binary socket.io packet.")
+        Nil
     }
   }
 

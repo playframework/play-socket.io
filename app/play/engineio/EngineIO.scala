@@ -84,8 +84,8 @@ class EngineIO(config: EngineIOConfig, httpErrorHandler: HttpErrorHandler, contr
           case Packets(_, _, packets, _) => Ok(EngineIOPayload(packets))
         }
 
-      // No sid, no packets, we're creating a new session
-      case (None, None) =>
+      // No sid, we're creating a new session
+      case (None, _) =>
         (engineIOManager ? Connect(transport, request)).mapTo[EngineIOPacket].map { packet =>
           Ok(packet)
         }

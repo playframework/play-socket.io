@@ -78,6 +78,7 @@ object EngineIOPacketType {
 
 sealed trait EngineIOPacket {
   val typeId: EngineIOPacketType
+  def packetEncodingName: String
 }
 
 object EngineIOPacket {
@@ -106,7 +107,9 @@ object EngineIOPacket {
   }
 }
 
-case class BinaryEngineIOPacket(typeId: EngineIOPacketType, data: ByteString) extends EngineIOPacket
+case class BinaryEngineIOPacket(typeId: EngineIOPacketType, data: ByteString) extends EngineIOPacket {
+  override def packetEncodingName = "binary"
+}
 
 object BinaryEngineIOPacket {
   implicit def writeable(implicit request: RequestHeader): Writeable[BinaryEngineIOPacket] = EngineIOPacket.writeable
@@ -123,7 +126,9 @@ object BinaryEngineIOPacket {
   }
 }
 
-case class Utf8EngineIOPacket(typeId: EngineIOPacketType, text: String) extends EngineIOPacket
+case class Utf8EngineIOPacket(typeId: EngineIOPacketType, text: String) extends EngineIOPacket {
+  override def packetEncodingName = "utf-8"
+}
 
 object Utf8EngineIOPacket {
   implicit def writeable(implicit request: RequestHeader): Writeable[Utf8EngineIOPacket] = EngineIOPacket.writeable

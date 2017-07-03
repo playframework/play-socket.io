@@ -1,10 +1,10 @@
-package socketio
+package play.engineio
 
 import java.util.UUID
 
 import akka.actor.{Actor, Props}
 import play.api.mvc.RequestHeader
-import socketio.protocol.{EngineIOPacket, EngineIOTransport}
+import play.engineio.protocol.{EngineIOPacket, EngineIOTransport}
 
 object EngineIOManagerActor {
   case class Connect(transport: EngineIOTransport, request: RequestHeader)

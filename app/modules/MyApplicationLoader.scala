@@ -3,11 +3,9 @@ package modules
 import chat.ChatEngine
 import play.api.{ApplicationLoader, BuiltInComponents, BuiltInComponentsFromContext, LoggerConfigurator}
 import com.softwaremill.macwire._
-import controllers.{AssetsComponents, MyRouter}
+import controllers.AssetsComponents
 import play.api.inject.DefaultApplicationLifecycle
-import play.api.mvc.ControllerComponents
-import play.api.routing.Router
-import socketio.{EngineIOConfig, EngineIOFactory}
+import play.engineio.EngineIOComponents
 
 class MyApplicationLoader extends ApplicationLoader {
   override def load(context: ApplicationLoader.Context) =
@@ -18,22 +16,16 @@ class MyApplicationLoader extends ApplicationLoader {
 }
 
 trait MyApplication extends BuiltInComponents
-  with AssetsComponents {
+  with AssetsComponents
+  with EngineIOComponents {
 
   override def applicationLifecycle: DefaultApplicationLifecycle
 
-  def controllerComponents: ControllerComponents
-
-  lazy val engineIOConfig = EngineIOConfig()
-  lazy val engineIOFactory = wire[EngineIOFactory]
   lazy val chatEngine = wire[ChatEngine]
 
-
-  lazy val mainRouter: Router = {
+  override lazy val router = {
     val prefix = "/"
     wire[_root_.router.Routes]
   }
-
-  override lazy val router = new MyRouter(mainRouter)
   override lazy val httpFilters = Nil
 }

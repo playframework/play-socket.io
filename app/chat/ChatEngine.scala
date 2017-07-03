@@ -5,7 +5,7 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.{BroadcastHub, Flow, Keep, MergeHub}
 import akka.util.ByteString
 import play.api.libs.json.{Format, Json}
-import socketio._
+import play.engineio._
 
 import scala.concurrent.Future
 import play.api.libs.functional.syntax._

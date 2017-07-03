@@ -1,4 +1,4 @@
-package socketio
+package play.engineio
 
 import akka.NotUsed
 import akka.pattern.ask
@@ -6,12 +6,12 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.stream._
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.util.Timeout
-import play.api.Logger
+import play.api.{Configuration, Logger}
 import play.api.http.HttpErrorHandler
 import play.api.libs.json.Json
 import play.api.mvc._
-import socketio.EngineIOManagerActor._
-import socketio.protocol._
+import play.engineio.EngineIOManagerActor._
+import play.engineio.protocol._
 
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
@@ -22,9 +22,35 @@ case class EngineIOConfig(
   pingInterval: FiniteDuration = 25.seconds,
   pingTimeout: FiniteDuration = 60.seconds,
   transports: Seq[EngineIOTransport] = Seq(EngineIOTransport.WebSocket, EngineIOTransport.Polling),
+  socketIOConfig: SocketIOConfig = SocketIOConfig()
+)
+
+object EngineIOConfig {
+  def fromConfiguration(configuration: Configuration) = {
+    val config = configuration.get[Configuration]("play.engine-io")
+    EngineIOConfig(
+      pingInterval = config.get[FiniteDuration]("ping-interval"),
+      pingTimeout = config.get[FiniteDuration]("ping-timeout"),
+      transports = config.get[Seq[String]]("transports").map(EngineIOTransport.fromName),
+      socketIOConfig = SocketIOConfig.fromConfiguration(config)
+    )
+  }
+}
+
+case class SocketIOConfig(
   ackDeadline: FiniteDuration = 60.seconds,
   autoCreate: Boolean = false
 )
+
+object SocketIOConfig {
+  def fromConfiguration(configuration: Configuration) = {
+    val config = configuration.get[Configuration]("socket-io")
+    SocketIOConfig(
+      ackDeadline = config.get[FiniteDuration]("ack-deadline"),
+      autoCreate = config.get[Boolean]("auto-create")
+    )
+  }
+}
 
 class EngineIO(config: EngineIOConfig, httpErrorHandler: HttpErrorHandler, controllerComponents: ControllerComponents,
   actorSystem: ActorSystem, engineIOManager: ActorRef)(implicit ec: ExecutionContext) extends AbstractController(controllerComponents) {
@@ -142,3 +168,15 @@ object EngineIO {
   }
 }
 
+trait EngineIOComponents {
+  def httpErrorHandler: HttpErrorHandler
+  def controllerComponents: ControllerComponents
+  def actorSystem: ActorSystem
+  def executionContext: ExecutionContext
+  def materializer: Materializer
+  def configuration: Configuration
+
+  lazy val engineIOConfig: EngineIOConfig = EngineIOConfig.fromConfiguration(configuration)
+  lazy val engineIOFactory: EngineIOFactory = new EngineIOFactory(engineIOConfig, httpErrorHandler,
+    controllerComponents, actorSystem)(executionContext, materializer)
+}

@@ -1,19 +1,18 @@
-package socketio
+package play.engineio
 
-import akka.{Done, NotUsed}
 import akka.actor.{Actor, ActorLogging, ActorRef, DeadLetterSuppression, Props, Status}
 import akka.pattern.pipe
-import akka.stream.scaladsl._
 import akka.stream._
+import akka.stream.scaladsl._
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
+import akka.{Done, NotUsed}
 import play.api.libs.json.{JsString, JsValue, Json}
 import play.api.libs.typedmap.TypedMap
-import play.api.mvc.{Headers, RequestHeader}
 import play.api.mvc.request.{RemoteConnection, RequestTarget}
-import socketio.SocketIOSessionActor._
-import socketio.protocol.EngineIOTransport.Polling
-import socketio.protocol._
+import play.api.mvc.{Headers, RequestHeader}
+import play.engineio.protocol.EngineIOTransport.Polling
+import play.engineio.protocol._
 
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline
@@ -122,6 +121,7 @@ class SocketIOSessionActor[S](
   private var upgradingFromPollingHack = false
 
   import EngineIOManagerActor._
+  import SocketIOSessionActor._
 
   private val sessionTick = context.system.scheduler.schedule(config.pingInterval, config.pingInterval, self, Tick)
 
@@ -155,7 +155,7 @@ class SocketIOSessionActor[S](
     case Close(_, _) =>
       context.stop(self)
 
-    case _ if config.autoCreate =>
+    case _ if config.socketIOConfig.autoCreate =>
       log.debug("{} - Auto creating connection for unknown session ", sid)
       onConnect(new RequestHeader {
         override def connection = RemoteConnection("", false, None)
@@ -230,7 +230,7 @@ class SocketIOSessionActor[S](
       // If there's an ack function, store it
       val id = event.event.ack.map { ack =>
         ackIdCounter += 1
-        val deadline = Deadline(config.ackDeadline)
+        val deadline = config.socketIOConfig.ackDeadline.fromNow
         ackFunctions += (ackIdCounter -> (deadline, ack))
         ackIdCounter
       }
@@ -679,7 +679,7 @@ private case class NamespacedSocketIOEvent(namespace: String, event: SocketIOEve
 private case class DisconnectNamespace(namespace: String) extends NamespacedEventOrDisconnect
 
 private class ActorSocketIOEventAck(sessionActor: ActorRef, namespace: Option[String], id: Long) extends SocketIOEventAck {
-  override def apply(args: Seq[Either[JsValue, ByteString]]) = sessionActor ! SendAck(namespace, args, id)
+  override def apply(args: Seq[Either[JsValue, ByteString]]) = sessionActor ! SocketIOSessionActor.SendAck(namespace, args, id)
 }
 
 private case class RetrieveRequester(requester: ActorRef, requestId: String)

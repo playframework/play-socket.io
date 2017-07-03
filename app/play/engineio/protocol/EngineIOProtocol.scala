@@ -1,4 +1,4 @@
-package socketio.protocol
+package play.engineio.protocol
 
 import java.util.Base64
 import java.util.regex.Pattern

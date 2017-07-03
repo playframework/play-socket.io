@@ -1,4 +1,4 @@
-package socketio.protocol
+package play.engineio.protocol
 
 import akka.util.ByteString
 import play.api.libs.json._

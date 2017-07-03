@@ -99,7 +99,6 @@ object SocketIOPacket {
     // Encode namespace
     packet.namespace.foreach { ns =>
       message ++= ns
-      message += ','
     }
 
     def encodeData(data: JsValue, id: Option[Long]): Unit = {

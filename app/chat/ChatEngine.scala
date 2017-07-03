@@ -3,6 +3,7 @@ package chat
 import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.{BroadcastHub, Flow, Keep, MergeHub}
+import akka.util.ByteString
 import play.api.libs.json.{Format, Json}
 import socketio._
 
@@ -18,12 +19,18 @@ object ChatProtocol {
       implicitly[Format[String]].inmap(ChatMessage.apply, _.message)
   }
 
-  val decoder = SocketIOEventDecoder.compose {
-    SocketIOEventDecoder.json[ChatMessage]("chat message")
+  import SocketIOEventCodec._
+
+  val decoder = decoders {
+    decodeJson[ChatMessage]("chat message").withMaybeAck(SocketIOAckEncoder[String] { msg =>
+      Seq(Right(ByteString(msg)))
+    })
   }
 
-  val encoder = SocketIOEventEncoder.compose {
-    case _: ChatMessage => SocketIOEventEncoder.json[ChatMessage]("chat message")
+  val encoder = encoders {
+    case (_: ChatMessage, _: (String => Unit)) => encodeJson[ChatMessage]("chat message").withAck(SocketIOAckDecoder { msg =>
+      msg.headOption.flatMap(_.right.toOption).map(_.utf8String).getOrElse(throw new RuntimeException("Missing ack argument"))
+    })
   }
 
 }
@@ -32,15 +39,27 @@ class ChatEngine(engineIOFactory: EngineIOFactory)(implicit mat: Materializer) {
 
   import ChatProtocol._
 
-  private val (chatSink, chatSource) = MergeHub.source[ChatMessage].map { message =>
-    println("Got message in chat engine: " + message)
-    message
-  }.toMat(BroadcastHub.sink)(Keep.both).run
+  private val chatFlow = {
+    val (sink, source) = MergeHub.source[ChatMessage].toMat(BroadcastHub.sink)(Keep.both).run
+    val mappedSink = Flow[(ChatMessage, Option[String => Unit])].map {
+      case (message, maybeAck) =>
+        maybeAck.foreach { ack =>
+          ack("I (the server) got your message: " + message.message)
+        }
+        message
+    }.to(sink)
+    val mappedSource = source.map { message =>
+      (message, { ackMessage: String =>
+        println("Ack from client: " + ackMessage)
+      })
+    }
+    Flow.fromSinkAndSource(mappedSink, mappedSource)
+  }
 
   private val engine = engineIOFactory("chatengine",
     (request, sid) => Future.successful(Some(SocketIOSession(sid, NotUsed)))
-  ) { _ => EngineIO.namespace(decoder, encoder)(Flow.fromSinkAndSource(chatSink, chatSource)) }
-  { (_, _) => None }
+  ) { _ => EngineIO.namespace(decoder, encoder)(chatFlow)
+  } (PartialFunction.empty)
 
   def endpoint(transport: String) = engine.endpoint(transport)
 }

@@ -49,8 +49,8 @@ object EngineIOOpenMessage {
 }
 
 sealed abstract class EngineIOPacketType private (val id: Int) {
-  val stringEncoded: String = id.toString
-  val binaryEncoded: ByteString = ByteString(stringEncoded.head)
+  val asciiEncoded: String = id.toString
+  val binaryEncoded: ByteString = ByteString(id)
 }
 
 object EngineIOPacketType {
@@ -62,9 +62,9 @@ object EngineIOPacketType {
   case object Upgrade extends EngineIOPacketType(5)
   case object Noop extends EngineIOPacketType(6)
 
-  def fromChar(char: Char) = fromBinary(char.toByte)
+  def fromChar(char: Char) = fromBinary((char - '0').toByte)
 
-  def fromBinary(byte: Byte) = byte - '0' match {
+  def fromBinary(byte: Byte) = byte match {
     case 0 => Open
     case 1 => Close
     case 2 => Ping
@@ -100,7 +100,7 @@ object EngineIOPacket {
         case BinaryMessage(bytes) => BinaryEngineIOPacket.decode(bytes)
       } via flow map {
         case BinaryEngineIOPacket(typeId, bytes) => BinaryMessage(typeId.binaryEncoded ++ bytes)
-        case Utf8EngineIOPacket(typeId, text) => TextMessage(typeId.stringEncoded + text)
+        case Utf8EngineIOPacket(typeId, text) => TextMessage(typeId.asciiEncoded + text)
       }
     }
   }
@@ -147,7 +147,14 @@ object EngineIOPayload {
 
   implicit def writeable(implicit request: RequestHeader): Writeable[EngineIOPayload] = {
     request.getQueryString("j") match {
-      case Some(ParseInt(j)) => throw new UnsupportedOperationException("JSONP is not yet supported")
+      case Some(ParseInt(j)) =>
+        if (!request.getQueryString("b64").contains("1")) {
+          // Encode by passing the payload as a json array of numbers via jsonp
+          Writeable(BinaryEngineIOPayloadEncoding.encodeAsJsonP(j), Some("text/plain; charset=utf-8"))
+        } else {
+          // Encode by passing the payload as text via jsonp
+          Writeable(Utf8EngineIOPayloadEncoding.encodeAsJsonP(j), Some("text/plain; charset=utf-8"))
+        }
       case Some(other) => throw new IllegalArgumentException(s"Illegal j value: $other")
       case None =>
         if (!request.getQueryString("b64").contains("1")) {
@@ -155,7 +162,7 @@ object EngineIOPayload {
           Writeable(BinaryEngineIOPayloadEncoding.encode, Some("application/octet-stream"))
         } else {
           // Encode using text
-          Writeable(Utf8EngineIOPayloadEncoding.encodeBytes, Some("text/plain; charset=utf-8"))
+          Writeable(Utf8EngineIOPayloadEncoding.encodeAsBytes, Some("text/plain; charset=utf-8"))
         }
     }
   }
@@ -163,8 +170,23 @@ object EngineIOPayload {
   def parser(parsers: PlayBodyParsers)(implicit ec: ExecutionContext): BodyParser[Option[EngineIOPayload]] = BodyParser { req =>
     if (req.method == "POST") {
       req.contentType match {
+
         case Some("text/plain") =>
           parsers.tolerantText.map(text => Some(Utf8EngineIOPayloadEncoding.decode(text))).apply(req)
+
+        case Some("application/octet-stream") =>
+          new ByteStringBodyParser(parsers).byteString.map(bytes =>
+            Some(BinaryEngineIOPayloadEncoding.decode(bytes))
+          ).apply(req)
+
+        case Some("application/x-www-form-urlencoded") =>
+          parsers.tolerantFormUrlEncoded.map { form =>
+            val payload = form.get("d").flatMap(_.headOption).getOrElse {
+              throw EngineIOEncodingException("Form payloads must supply the parameter in a field named 'd'")
+            }
+            Some(Utf8EngineIOPayloadEncoding.decode(payload))
+          }.apply(req)
+
         case other =>
           Accumulator.done(Left(Results.Ok("Bad content type")))
       }
@@ -187,6 +209,21 @@ object BinaryEngineIOPayloadEncoding {
     payload.packets.foldLeft(ByteString.empty)((bytes, packet) => bytes ++ encodePacket(packet))
   }
 
+  def encodeAsJsonP(callback: String)(payload: EngineIOPayload): ByteString = {
+    // This is the stupidest encoding ever, but socket.io supports it. Basically,
+    // we turn the binary payload into an array of numbers, one for each byte.
+    val payloadBytes = encode(payload)
+
+    val payloadCommaSeparatedBytes = ByteString(payloadBytes.map {
+      case positive if positive >= 0 => positive.toString
+      case negative if negative < 0 => (negative.toInt + 256).toString
+    }.mkString(","))
+
+    ByteString("___eio[") ++ ByteString(callback) ++
+      ByteString(")]({\"type\":\"Buffer\",\"data\":[") ++ payloadCommaSeparatedBytes ++
+      ByteString("]});")
+  }
+
   def decode(bytes: ByteString): EngineIOPayload = {
     def decodeP(bytes: ByteString): List[EngineIOPacket] = {
       if (bytes.isEmpty) {
@@ -200,12 +237,14 @@ object BinaryEngineIOPayloadEncoding {
   }
 
   private def encodePacket(packet: EngineIOPacket) = {
+    // Subtle thing here. When encoding a binary packet, the type id is binary encoded, but when encoding a string
+    // packet, the type id is ascii encoded - even though the rest of the header is binary encoded. Makes sense much?
     packet match {
       case BinaryEngineIOPacket(typeId, data) =>
         BinaryPacketBytes ++ encodeInt(data.size + 1) ++ LengthTerminatorBytes ++ typeId.binaryEncoded ++ data
       case Utf8EngineIOPacket(typeId, text) =>
         val data = ByteString(text)
-        StringPacketBytes ++ encodeInt(data.size + 1) ++ LengthTerminatorBytes ++ typeId.binaryEncoded ++ data
+        StringPacketBytes ++ encodeInt(data.size + 1) ++ LengthTerminatorBytes ++ ByteString(typeId.asciiEncoded) ++ data
     }
   }
 
@@ -240,13 +279,17 @@ object BinaryEngineIOPayloadEncoding {
           throw EngineIOEncodingException("Packet length must be at least 1")
         }
 
-        val packetTypeId = EngineIOPacketType.fromBinary(bytes(lengthTerminator + 1))
+        val packetTypeIdByte = bytes(lengthTerminator + 1)
 
         val packetBytes = bytes.slice(lengthTerminator + 2, lengthTerminator + length + 1)
 
         val packet = packetEncoding match {
-          case `StringPacketByte` => Utf8EngineIOPacket(packetTypeId, packetBytes.utf8String)
-          case `BinaryPacketByte` => BinaryEngineIOPacket(packetTypeId, packetBytes)
+          case `StringPacketByte` =>
+            val packetTypeId = EngineIOPacketType.fromChar(packetTypeIdByte.toChar)
+            Utf8EngineIOPacket(packetTypeId, packetBytes.utf8String)
+          case `BinaryPacketByte` =>
+            val packetTypeId = EngineIOPacketType.fromBinary(packetTypeIdByte)
+            BinaryEngineIOPacket(packetTypeId, packetBytes)
         }
 
         packet -> bytes.drop(lengthTerminator + 1 + length)
@@ -272,8 +315,13 @@ object Utf8EngineIOPayloadEncoding {
     builder.toString
   }
 
-  def encodeBytes(payload: EngineIOPayload): ByteString = {
+  def encodeAsBytes(payload: EngineIOPayload): ByteString = {
     ByteString(encode(payload))
+  }
+
+  def encodeAsJsonP(callback: String)(payload: EngineIOPayload): ByteString = {
+    val payloadBytes = ByteString(Json.toBytes(JsString(Utf8EngineIOPayloadEncoding.encode(payload))))
+    ByteString("___eio[") ++ ByteString(callback) ++ ByteString("](") ++ payloadBytes ++ ByteString(");")
   }
 
   private def encodePacket(builder: StringBuilder)(packet: EngineIOPacket) = {
@@ -283,15 +331,15 @@ object Utf8EngineIOPayloadEncoding {
         text -> text.codePointCount(0, text.length)
       case BinaryEngineIOPacket(_, data) =>
         val text = new String(Base64.getEncoder.encode(data.toArray), "US-ASCII")
-        // text is ascii, no need to do a code point count
-        text -> text.length
+        // text is ascii, no need to do a code point count, but need to add 1 for the binary marker
+        text -> (text.length + 1)
     }
     builder ++= (length + 1).toString
     builder += ':'
     if (packet.isInstanceOf[BinaryEngineIOPacket]) {
       builder += 'b'
     }
-    builder ++= packet.typeId.stringEncoded
+    builder ++= packet.typeId.asciiEncoded
     builder ++= packetData
   }
 
@@ -315,11 +363,12 @@ object Utf8EngineIOPayloadEncoding {
       val binary = matcher.group(2) == "b"
       val packetType = EngineIOPacketType.fromChar(matcher.group(3).head)
       if (binary) {
-        if (text.length - matcher.end() - 1 < length) {
-          throw EngineIOEncodingException(s"Parsed packet length of $length but only ${text.length - matcher.end() + 1} bytes are available.")
+        val endOfMessage = matcher.end() + length - 2
+        if (endOfMessage > text.length) {
+          throw EngineIOEncodingException(s"Parsed packet length of $length but only ${text.length - matcher.end() + 2} bytes are available.")
         }
-        val data = ByteString(Base64.getDecoder.decode(text.substring(matcher.end(), matcher.end() + length - 1)))
-        BinaryEngineIOPacket(packetType, data) -> (matcher.end() + length - 1)
+        val data = ByteString(Base64.getDecoder.decode(text.substring(matcher.end(), endOfMessage)))
+        BinaryEngineIOPacket(packetType, data) -> endOfMessage
       } else {
         val codePointCount = text.codePointCount(matcher.end(), text.length)
         if (codePointCount < length - 1) {
@@ -351,4 +400,4 @@ object Utf8EngineIOPayloadEncoding {
   val PacketHeaderPattern = Pattern.compile("(\\d+):(b?)(\\d)")
 }
 
-case class EngineIOEncodingException(msg: String) extends RuntimeException
+case class EngineIOEncodingException(msg: String) extends RuntimeException(msg)

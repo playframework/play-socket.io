@@ -1,7 +1,7 @@
 package socketio
 
 import akka.NotUsed
-import akka.pattern.{AskTimeoutException, ask}
+import akka.pattern.ask
 import akka.actor.{ActorRef, ActorSystem}
 import akka.stream._
 import akka.stream.scaladsl.{Flow, Sink, Source}
@@ -10,7 +10,7 @@ import play.api.Logger
 import play.api.http.HttpErrorHandler
 import play.api.libs.json.Json
 import play.api.mvc._
-import socketio.EngineIOManagerActor.{Connect, GoAway, Packets, Retrieve}
+import socketio.EngineIOManagerActor._
 import socketio.protocol._
 
 import scala.collection.immutable
@@ -23,8 +23,6 @@ case class EngineIOConfig(
   pingTimeout: FiniteDuration = 60.seconds,
   transports: Seq[EngineIOTransport] = Seq(EngineIOTransport.WebSocket, EngineIOTransport.Polling),
   ackDeadline: FiniteDuration = 60.seconds,
-  retrieveRequestIdleResponse: FiniteDuration = 8.seconds,
-  receiveRequestTimeout: FiniteDuration = 10.seconds,
   autoCreate: Boolean = false
 )
 
@@ -32,8 +30,7 @@ class EngineIO(config: EngineIOConfig, httpErrorHandler: HttpErrorHandler, contr
   actorSystem: ActorSystem, engineIOManager: ActorRef)(implicit ec: ExecutionContext) extends AbstractController(controllerComponents) {
 
   private val log = Logger(classOf[EngineIO])
-
-  private implicit val timeout = Timeout(config.receiveRequestTimeout)
+  private implicit val timeout = Timeout(config.pingTimeout)
 
   def endpoint(transport: String): Handler = {
     EngineIOTransport.fromName(transport) match {
@@ -56,9 +53,7 @@ class EngineIO(config: EngineIOConfig, httpErrorHandler: HttpErrorHandler, contr
 
       // sid no payload, we're retrieving packets
       case (Some(sid), None) =>
-        (engineIOManager ? Retrieve(sid, transport, requestId)).recover {
-          case e: AskTimeoutException => Packets(sid, transport, Seq(EngineIOPacket(EngineIOPacketType.Noop)))
-        }.map {
+        (engineIOManager ? Retrieve(sid, transport, requestId)).map {
           case GoAway | Packets(_, _, Nil, _) => Ok(EngineIOPacket(EngineIOPacketType.Noop))
           case Packets(_, _, packets, _) => Ok(EngineIOPayload(packets))
         }
@@ -99,28 +94,22 @@ class EngineIO(config: EngineIOConfig, httpErrorHandler: HttpErrorHandler, contr
     val in = Flow[EngineIOPacket].batch(4, Vector(_))(_ :+ _).mapAsync(1) { packets =>
       engineIOManager ? Packets(sid, transport, packets, requestId)
     }.to(Sink.ignore.mapMaterializedValue(_.onComplete {
-      case Success(_) =>
-        log.debug(s"$sid : $requestId@$transport - Incoming stream terminated")
-      case Failure(e) =>
-        log.warn(s"$sid : $requestId@$transport - Incoming stream failed", e)
+      case Success(s) =>
+        engineIOManager ! Close(sid, transport)
+      case Failure(t) =>
+        log.warn("Error on incoming WebSocket", t)
     }))
 
-    val out = (Source.repeat(NotUsed).mapAsync(1) { _ =>
-      (engineIOManager ? Retrieve(sid, transport, requestId)).recover {
-        case e: AskTimeoutException => Packets(sid, transport, Nil)
+    val out = Source.repeat(NotUsed).mapAsync(1) { _ =>
+      val asked = engineIOManager ? Retrieve(sid, transport, requestId)
+      asked.onComplete {
+        case Success(s) =>
+        case Failure(t) =>
+          log.warn("Error on outgoing WebSocket", t)
       }
-    } map { message =>
-      message
+      asked
     } takeWhile(_ != GoAway) mapConcat {
-        case Packets(_, _, packets, _) => packets.to[immutable.Seq]
-    }).watchTermination() { (m1, f) =>
-      f.onComplete {
-        case Success(_) =>
-          log.debug(s"$sid : $requestId@$transport - Outgoing stream terminated")
-        case Failure(e) =>
-          log.warn(s"$sid : $requestId@$transport - Outgoing stream failed", e)
-      }
-      m1
+      case Packets(_, _, packets, _) => packets.to[immutable.Seq]
     }
 
     Flow.fromSinkAndSourceCoupled(in, out)
@@ -133,7 +122,7 @@ class EngineIOFactory(config: EngineIOConfig, httpErrorHandler: HttpErrorHandler
 
   def apply[S](name: String, onConnect: (RequestHeader, String) => Future[Option[SocketIOSession[S]]])
     (defaultNamespace: SocketIOSession[S] => Flow[SocketIOEvent, SocketIOEvent, _])
-    (connectToNamespace: (SocketIOSession[S], String) => Option[Flow[SocketIOEvent, SocketIOEvent, _]]): EngineIO = {
+    (connectToNamespace: PartialFunction[(SocketIOSession[S], String), Flow[SocketIOEvent, SocketIOEvent, _]]): EngineIO = {
 
     val sessionProps = SocketIOSessionActor.props(config, onConnect, defaultNamespace, connectToNamespace)
 

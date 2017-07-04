@@ -1,18 +1,29 @@
-name := """test-socket-io"""
-organization := "com.example"
+version in ThisBuild := "1.0-SNAPSHOT"
 
-version := "1.0-SNAPSHOT"
+lazy val root = (project in file("."))
+  .settings(
+    organization := "com.lightbend.play",
+    name := "play-socket.io",
 
-lazy val root = (project in file(".")).enablePlugins(PlayScala)
+    scalaVersion := "2.12.2",
 
-scalaVersion := "2.12.2"
+    libraryDependencies ++= Seq(
+      "com.typesafe.play" %% "play" % "2.6.0",
+      "com.typesafe.akka" %% "akka-remote" % "2.5.3"
+    ),
 
-libraryDependencies += guice
-libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "3.0.0" % Test
-libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.3.0" % "provided"
+    PB.targets in Compile := Seq(
+      scalapb.gen() -> (sourceManaged in Compile).value
+    )
+  )
 
-// Adds additional packages into Twirl
-//TwirlKeys.templateImports += "com.example.controllers._"
+lazy val chat = (project in file("samples/chat"))
+  .enablePlugins(PlayScala)
+  .dependsOn(root)
+  .settings(
+    name := "play-socket.io-chat-example",
+    organization := "com.lightbend.play",
+    scalaVersion := "2.12.2",
 
-// Adds additional packages into conf/routes
-// play.sbt.routes.RoutesKeys.routesImport += "com.example.binders._"
+    libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.3.0" % "provided"
+  )

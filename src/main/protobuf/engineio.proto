@@ -1,0 +1,78 @@
+/**
+ * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ */
+syntax = "proto3";
+
+package play.engineio.protobuf;
+
+option java_package = "play.engineio.protobuf";
+option optimize_for = SPEED;
+
+enum Transport {
+  POLLING = 0;
+  WEBSOCKET = 1;
+}
+
+message Connect {
+  string sid = 1;
+  Transport transport = 2;
+  string requestId = 3;
+
+  /* HTTP request attributes */
+  string method = 4;
+  string uri = 5;
+  string version = 6;
+  repeated HttpHeader headers = 7;
+}
+
+message HttpHeader {
+  string name = 1;
+  string value = 2;
+}
+
+message Packets {
+  string sid = 1;
+  Transport transport = 2;
+  repeated Packet packets = 3;
+  string requestId = 4;
+  bool lastPacket = 5;
+}
+
+enum PacketType {
+  OPEN = 0;
+  CLOSE = 1;
+  PING = 2;
+  PONG = 3;
+  MESSAGE = 4;
+  UPRADE = 5;
+  NOOP = 6;
+}
+
+message Packet {
+  PacketType packetType = 1;
+  oneof payload {
+    string text = 2;
+    bytes binary = 3;
+  }
+}
+
+message Retrieve {
+  string sid = 1;
+  Transport transport = 2;
+  string requestId = 3;
+}
+
+message Close {
+  string sid = 1;
+  Transport transport = 2;
+  string requestId = 3;
+}
+
+message EngineIOEncodingException {
+  string message = 1;
+}
+
+message SocketIOEncodingException {
+  string packet = 1;
+  string message = 2;
+}

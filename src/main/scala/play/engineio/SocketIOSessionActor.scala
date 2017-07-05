@@ -448,10 +448,12 @@ class SocketIOSessionActor[SessionData](
         currentBinaryPacketParts :+= bytes
         if (parts == currentBinaryPacketParts.size) {
 
+          val packets = handleIncomingSocketIOPacket(packet).toSeq
+
           currentBinaryPacketParts = IndexedSeq.empty
           currentReceivingBinaryPacket = None
 
-          handleIncomingSocketIOPacket(packet).toSeq
+          packets
         } else {
           Nil
         }
@@ -473,6 +475,10 @@ class SocketIOSessionActor[SessionData](
       case SocketIODisconnectPacket(namespace) =>
         validateNamespace(namespace) {
           val ns = namespace.getOrElse("/")
+          // We remove the disconnect from the pool, this ensures we don't send a
+          // disconnect back, since the socket.io client will have forgotten that
+          // the namespace exists by the time it gets it, and so won't do anything
+          // with it.
           activeNamespaces -= ns
           DisconnectNamespace(ns)
         }
@@ -641,23 +647,39 @@ class SocketIOSessionActor[SessionData](
     // We shutdown the kill switch because the kill switch is inserted in two places, before the user supplied flow,
     // and after it, and that flow may not carry errors/cancellations through, so we have to ensure the other side
     // is killed.
-    val flow = Flow[SocketIOEvent].via(killSwitch.flow).watchTermination() { (m, future) =>
-      future.onComplete {
-        case Success(_) =>
-          killSwitch.shutdown()
-          self ! MaybeDisconnect(namespace, None)
-        case Failure(e) =>
-          killSwitch.shutdown()
-          self ! MaybeDisconnect(namespace, Some(e))
-      }
-      m
-    }
+    val flow = Flow[SocketIOEvent].via(killSwitch.flow).via(
+      Flow.fromGraph(new GraphStage[FlowShape[SocketIOEvent, SocketIOEvent]] {
+
+        val in = Inlet[SocketIOEvent]("NamespaceDisconnectHandler")
+        val out = Outlet[SocketIOEvent]("NamespaceDisconnectHandler")
+
+        override def shape = FlowShape(in, out)
+        override def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) {
+          setHandler(in, new InHandler {
+            override def onPush() = push(out, grab(in))
+            override def onUpstreamFinish() = {
+              killSwitch.shutdown()
+              self ! MaybeDisconnect(namespace, None)
+              complete(out)
+            }
+            override def onUpstreamFailure(e: Throwable) = {
+              self ! MaybeDisconnect(namespace, Some(e))
+              killSwitch.shutdown()
+              // Don't propagate the failure, because we're already handling it.
+              complete(out)
+            }
+          })
+          setHandler(out, new OutHandler {
+            override def onPull() = pull(in)
+          })
+        }
+    }))
 
     (flow, killSwitch)
   }
 
   private def sendDisconnect(namespace: String) = {
-    SocketIODisconnectPacket(optNamespace(namespace))
+    sendSocketIOPacket(SocketIODisconnectPacket(optNamespace(namespace)))
   }
 
   private def sendError(namespace: String, exception: Throwable) = {

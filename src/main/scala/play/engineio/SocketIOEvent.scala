@@ -115,6 +115,12 @@ trait SocketIOEventDecoder[+T] {
 
 object SocketIOEventDecoder {
 
+  def raw: SocketIOEventDecoder[SocketIOEvent] = new SocketIOEventDecoder[SocketIOEvent] {
+    override def decode = {
+      case event => event
+    }
+  }
+
   def apply[T](name: String)(decoder: SocketIOEvent => T): SocketIOEventDecoder[T] = new SocketIOEventDecoder[T] {
     override def decode = {
       case event if event.name == name => decoder(event)
@@ -155,6 +161,12 @@ trait SocketIOEventEncoder[T] { self =>
 }
 
 object SocketIOEventEncoder {
+
+  def raw: SocketIOEventEncoder[SocketIOEvent] = new SocketIOEventEncoder[SocketIOEvent] {
+    override def encode = {
+      case event: SocketIOEvent => event
+    }
+  }
 
   def apply[T](encoder: PartialFunction[Any, SocketIOEvent]): SocketIOEventEncoder[T] = new SocketIOEventEncoder[T] {
     override def encode = encoder

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Socket.IO Integration Tests</title>
+    <link rel="stylesheet" href="lib/mocha-3.4.2.min.css">
+</head>
+<body style='margin-left: 20px; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif; font-size: 0.8em;'>
+<h1>Play socket.io integration tests</h1>
+
+<p>This runs the Play socket.io integration tests.</p>
+
+<p>You need to ensure that the Play TestSocketIOServer is running, this can be run by running <code>sbt test:run</code>.
+    That server will serve this as the index file.</p>
+
+<a href="index.html?jsonp=true">Enable JSONP tests</a>
+
+<p>JSONP tests are disabled by default because they are slow and they make working with the tests harder because they
+    turn the refresh button into a stop button, so you have to let all the tests run before you can hit refresh and try again.</p>
+
+<div id="mocha"></div>
+<!-- Load and setup mocha -->
+<script src="lib/mocha-3.4.2.min.js"></script>
+<script src="lib/chai-4.0.2.min.js"></script>
+<script>
+  mocha.setup('bdd');
+</script>
+
+<!-- Load socket io and other libs -->
+<script src="lib/socket.io-2.0.3.js"></script>
+<script src="lib/encoding-0.6.4.js"></script>
+<script src="lib/utils.js"></script>
+
+<!-- Load all our tests -->
+<script src="socketio.js"></script>
+
+<script>
+    // This is used by the WebDriver runner, which sets up test listeners before calling run itself.
+    if (getQueryParameter("dontrun") !== "true") {
+      mocha.run();
+    }
+</script>
+</body>
+</html>

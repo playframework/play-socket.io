@@ -11,8 +11,7 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.util.Timeout
 import play.api.{Configuration, Logger}
 import play.api.http.HttpErrorHandler
-import play.api.libs.json.{JsString, JsValue}
-import play.api.mvc.{RequestHeader, _}
+import play.api.mvc._
 import play.engineio.EngineIOManagerActor._
 import play.engineio.protocol._
 
@@ -27,8 +26,7 @@ case class EngineIOConfig(
   transports: Seq[EngineIOTransport] = Seq(EngineIOTransport.WebSocket, EngineIOTransport.Polling),
   actorName: String = "engine.io",
   routerName: Option[String] = None,
-  useRole: Option[String] = None,
-  socketIOConfig: SocketIOConfig = SocketIOConfig()
+  useRole: Option[String] = None
 )
 
 object EngineIOConfig {
@@ -40,21 +38,7 @@ object EngineIOConfig {
       transports = config.get[Seq[String]]("transports").map(EngineIOTransport.fromName),
       actorName = config.get[String]("actor-name"),
       routerName = config.get[Option[String]]("router-name"),
-      useRole = config.get[Option[String]]("use-role"),
-      socketIOConfig = SocketIOConfig.fromConfiguration(config)
-    )
-  }
-}
-
-case class SocketIOConfig(
-  ackDeadline: FiniteDuration = 60.seconds
-)
-
-object SocketIOConfig {
-  def fromConfiguration(configuration: Configuration) = {
-    val config = configuration.get[Configuration]("socket-io")
-    SocketIOConfig(
-      ackDeadline = config.get[FiniteDuration]("ack-deadline")
+      useRole = config.get[Option[String]]("use-role")
     )
   }
 }
@@ -143,7 +127,7 @@ class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErrorHand
         }
 
       case Some(sid) =>
-          Future.successful(Right(webSocketFlow(sid, requestId)))
+        Future.successful(Right(webSocketFlow(sid, requestId)))
     }
   }
 
@@ -167,7 +151,7 @@ class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErrorHand
           log.warn("Error on outgoing WebSocket", t)
       }
       asked
-    } takeWhile(!_.isInstanceOf[Close]) takeWhile({
+    } takeWhile (!_.isInstanceOf[Close]) takeWhile( {
       case Packets(_, _, _, _, lastPacket) => !lastPacket
     }, inclusive = true) mapConcat {
       case Packets(_, _, packets, _, _) => packets.to[immutable.Seq]
@@ -187,197 +171,39 @@ final class EngineIO(config: EngineIOConfig, httpErrorHandler: HttpErrorHandler,
   private val log = Logger(classOf[EngineIO])
 
   /**
-    * Create a builder.
-    *
-    * The builder will by default:
-    *   - Accept all sessions
-    *   - Send the message of each exception the client as a JSON string
-    *   - Use a flow that ignores all incoming messages and produces no outgoing messages for the default namespace
-    *   - Provide no other namespaces
+    * Build the engine.io controller.
     */
-  def builder: EngineIOBuilder[Any] = {
-    new EngineIOBuilder[Any](
-      (_, _) => Future.successful(NotUsed),
-      {
-        case e if e.getMessage != null => JsString(e.getMessage)
-        case e => JsString(e.getClass.getName)
-      },
-      _ => Flow.fromSinkAndSource(Sink.ignore, Source.maybe),
-      PartialFunction.empty
-    )
-  }
-
-  /**
-    * A builder for engine.io instances.
-    */
-  class EngineIOBuilder[SessionData] private[engineio] (
-    connectCallback: (RequestHeader, String) => Future[SessionData],
-    errorHandler: PartialFunction[Throwable, JsValue],
-    defaultNamespaceCallback: SocketIOSession[SessionData] => Flow[SocketIOEvent, SocketIOEvent, _],
-    connectToNamespaceCallback: PartialFunction[(SocketIOSession[SessionData], String), Flow[SocketIOEvent, SocketIOEvent, _]]
-  ) {
-
-    /**
-      * Set the onConnect callback.
-      *
-      * The callback takes the request header of the incoming connection and the id of the ssion, and should produce a
-      * session object, which can be anything, for example, a user principal, or other authentication and/or
-      * authorization details.
-      *
-      * If you wish to reject the connection, you can throw an exception, which will later be handled by the error
-      * handler to turn it into a message to send to the client.
-      */
-    def onConnect[S <: SessionData](callback: (RequestHeader, String) => S): EngineIOBuilder[S] = {
-      onConnectAsync((rh, sid) => Future.successful(callback(rh, sid)))
+  def createController(handler: EngineIOSessionHandler): EngineIOController = {
+    def startManager(): ActorRef = {
+      val sessionProps = EngineIOSessionActor.props(config, handler)
+      val managerProps = EngineIOManagerActor.props(config, sessionProps)
+      actorSystem.actorOf(managerProps, config.actorName)
     }
 
-    /**
-      * Set the onConnect callback.
-      *
-      * The callback takes the request header of the incoming connection and the id of the ssion, and should produce a
-      * session object, which can be anything, for example, a user principal, or other authentication and/or
-      * authorization details.
-      *
-      * If you wish to reject the connection, you can throw an exception, which will later be handled by the error
-      * handler to turn it into a message to send to the client.
-      */
-    def onConnectAsync[S <: SessionData](callback: (RequestHeader, String) => Future[S]): EngineIOBuilder[S] = {
-      new EngineIOBuilder[S](
-        callback,
-        errorHandler,
-        defaultNamespaceCallback,
-        connectToNamespaceCallback
-      )
+    val actorRef = config.routerName match {
+      case Some(routerName) =>
+
+        // Start the manager, if we're configured to do so
+        config.useRole match {
+          case Some(role) =>
+            Configuration(actorSystem.settings.config).getOptional[Seq[String]]("akka.cluster.roles") match {
+              case None => throw new IllegalArgumentException("akka.cluster.roles is not set, are you using Akka clustering?")
+              case Some(roles) if roles.contains(role) =>
+                startManager()
+              case _ =>
+                log.debug("Not starting EngineIOManagerActor because we don't have the " + role + " configured on this node")
+            }
+          case None =>
+            startManager()
+        }
+
+        actorSystem.actorOf(FromConfig.props(), routerName)
+
+      case None =>
+        startManager()
     }
 
-    /**
-      * Set the error handler.
-      *
-      * If any errors are encountered, they will be serialized to JSON this function, and then passed to the client
-      * using a socket.io error message.
-      *
-      * Any errors not handled by this partial function will fallback to the existing error handler in this builder,
-      * which by default sends the exception message as a JSON string.
-      */
-    def withErrorHandler(handler: PartialFunction[Throwable, JsValue]): EngineIOBuilder[SessionData] = {
-      new EngineIOBuilder(
-        connectCallback,
-        handler.orElse(errorHandler),
-        defaultNamespaceCallback,
-        connectToNamespaceCallback
-      )
-    }
-
-    /**
-      * Set the default namespace flow.
-      *
-      * @param decoder the decoder to use.
-      * @param encoder the encoder to use.
-      * @param flow the flow.
-      */
-    def defaultNamespace[In, Out](decoder: SocketIOEventDecoder[In], encoder: SocketIOEventEncoder[Out], flow: Flow[In, Out, _]): EngineIOBuilder[SessionData] = {
-      defaultNamespace(decoder, encoder)(_ => flow)
-    }
-
-    /**
-      * Set the default namespace flow.
-      *
-      * This variant allows you to customise the returned flow according to the session.
-      *
-      * @param decoder the decoder to use.
-      * @param encoder the encoder to use.
-      * @param callback a callback to create the flow given the session.
-      */
-    def defaultNamespace[In, Out](decoder: SocketIOEventDecoder[In], encoder: SocketIOEventEncoder[Out])
-      (callback: SocketIOSession[SessionData] => Flow[In, Out, _]): EngineIOBuilder[SessionData] = {
-      new EngineIOBuilder(
-        connectCallback,
-        errorHandler,
-        session => createNamespace(decoder, encoder, callback(session)),
-        connectToNamespaceCallback
-      )
-    }
-
-    /**
-      * Add a namespace.
-      *
-      * @param name The name of the namespace.
-      * @param decoder The decoder to use to decode messages.
-      * @param encoder The encoder to use to encode messages.
-      * @param flow The flow to use for the namespace.
-      */
-    def addNamespace[In, Out](name: String, decoder: SocketIOEventDecoder[In], encoder: SocketIOEventEncoder[Out], flow: Flow[In, Out, _]): EngineIOBuilder[SessionData] = {
-      addNamespace(decoder, encoder) {
-        case (_, `name`) => flow
-      }
-    }
-
-    /**
-      * Add a namespace.
-      *
-      * This variant allows you to pass a callback that pattern matches on the namespace name, and uses the session
-      * data to decide whether the user should be able to connect to this namespace or not.
-      *
-      * Any exceptions thrown here will result in an error being sent back to the client, serialized by the
-      * errorHandler. Alternatively, you can simply not return a value from the partial function, which will result in
-      * an error being sent to the client that the namespace does not exist.
-      *
-      * @param decoder The decoder to use to decode messages.
-      * @param encoder The encoder to use to encode messages.
-      * @param callback A callback to match the namespace and create a flow accordingly.
-      */
-    def addNamespace[In, Out](decoder: SocketIOEventDecoder[In], encoder: SocketIOEventEncoder[Out])
-      (callback: PartialFunction[(SocketIOSession[SessionData], String), Flow[In, Out, _]]): EngineIOBuilder[SessionData] = {
-
-      new EngineIOBuilder(
-        connectCallback,
-        errorHandler,
-        defaultNamespaceCallback,
-        connectToNamespaceCallback.orElse(callback.andThen { flow =>
-          createNamespace(decoder, encoder, flow)
-        })
-      )
-    }
-
-    /**
-      * Build the engine.io controller.
-      */
-    def build: EngineIOController = {
-      def startManager(): ActorRef = {
-        val sessionProps = SocketIOSessionActor.props(config, connectCallback, errorHandler, defaultNamespaceCallback, connectToNamespaceCallback)
-        val managerProps = EngineIOManagerActor.props(config, sessionProps)
-        actorSystem.actorOf(managerProps, config.actorName)
-      }
-
-      val actorRef = config.routerName match {
-        case Some(routerName) =>
-
-          // Start the manager, if we're configured to do so
-          config.useRole match {
-            case Some(role) =>
-              Configuration(actorSystem.settings.config).getOptional[Seq[String]]("akka.cluster.roles") match {
-                case None => throw new IllegalArgumentException("akka.cluster.roles is not set, are you using Akka clustering?")
-                case Some(roles) if roles.contains(role) =>
-                  startManager()
-                case _ =>
-                  log.debug("Not starting EngineIOManagerActor because we don't have the " + role + " configured on this node")
-              }
-            case None =>
-              startManager()
-          }
-
-          actorSystem.actorOf(FromConfig.props(), routerName)
-
-        case None =>
-          startManager()
-      }
-
-      new EngineIOController(config, httpErrorHandler, controllerComponents, actorSystem, actorRef)
-    }
-
-    private def createNamespace[In, Out](decoder: SocketIOEventDecoder[In], encoder: SocketIOEventEncoder[Out], flow: Flow[In, Out, _]): Flow[SocketIOEvent, SocketIOEvent, _] = {
-      Flow[SocketIOEvent] map decoder.decode via flow map encoder.encode
-    }
+    new EngineIOController(config, httpErrorHandler, controllerComponents, actorSystem, actorRef)
   }
 }
 

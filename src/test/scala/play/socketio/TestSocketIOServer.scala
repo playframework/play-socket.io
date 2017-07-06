@@ -1,7 +1,7 @@
 package play.socketio
 
 import akka.stream.{Materializer, OverflowStrategy}
-import akka.stream.scaladsl.{BroadcastHub, Flow, Keep, MergeHub, Sink, Source}
+import akka.stream.scaladsl.{BroadcastHub, Flow, Keep, Sink, Source}
 import play.api.{ApplicationLoader, BuiltInComponentsFromContext, Environment, LoggerConfigurator}
 import play.core.server.{AkkaHttpServer, ServerConfig}
 import play.engineio._
@@ -12,7 +12,7 @@ import play.api.mvc.EssentialAction
 import play.api.routing.sird._
 import play.api.routing.Router
 
-import scala.concurrent.{ExecutionContext, Promise}
+import scala.concurrent.ExecutionContext
 
 /**
   * Test server that can be
@@ -22,7 +22,7 @@ object TestSocketIOServer {
   def start(config: ServerConfig = ServerConfig()): AkkaHttpServer = {
     AkkaHttpServer.fromApplication(
       new BuiltInComponentsFromContext(ApplicationLoader.createContext(Environment.simple()))
-        with EngineIOComponents
+        with SocketIOComponents
         with AssetsComponents {
 
         LoggerConfigurator(environment.classLoader).foreach(_.configure(environment))
@@ -55,7 +55,7 @@ object TestSocketIOServer {
     server.stop()
   }
 
-  class TestEngine(engineIO: EngineIO)(implicit materializer: Materializer, ec: ExecutionContext) {
+  class TestEngine(socketIO: SocketIO)(implicit materializer: Materializer, ec: ExecutionContext) {
 
     val decoder = SocketIOEventDecoder.raw
     val encoder = SocketIOEventEncoder.raw
@@ -65,7 +65,7 @@ object TestSocketIOServer {
       (sourceQueue, Flow.fromSinkAndSource(Sink.ignore, source))
     }
 
-    val controller = engineIO.builder
+    val controller = socketIO.builder
       .onConnect { (request, sid) =>
         if (request.getQueryString("fail").contains("true")) {
           sys.error("failed")
@@ -83,15 +83,15 @@ object TestSocketIOServer {
       }
       .addNamespace(decoder, encoder) {
         case (_, "/failable") =>
-          val fail = Promise[SocketIOEvent]()
-          Flow.fromSinkAndSource(Sink.foreach[SocketIOEvent] { event =>
+          Flow[SocketIOEvent].map { event =>
             if (event.name == "fail me") {
-              fail.failure(new RuntimeException("you failed"))
+              throw new RuntimeException("you failed")
             }
-          }, Source.fromFuture(fail.future))
+            event
+          }
       }
       .addNamespace("/test-disconnect-listener", decoder, encoder, testDisconnectFlow)
-      .build
+      .createController()
   }
 
 }

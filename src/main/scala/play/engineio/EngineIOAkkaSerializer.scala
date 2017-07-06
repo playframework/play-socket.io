@@ -7,6 +7,7 @@ import com.google.protobuf.{ByteString => PByteString}
 import play.engineio.EngineIOManagerActor._
 import play.engineio.protocol._
 import play.engineio.protobuf.{engineio => p}
+import play.socketio.protocol.SocketIOEncodingException
 
 /**
   * Serializer for all messages sent to/from the EngineIOManagerActor.

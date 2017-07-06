@@ -1,7 +1,9 @@
-package play.engineio.protocol
+package play.socketio.protocol
 
 import akka.util.ByteString
 import play.api.libs.json._
+import play.engineio.protocol._
+import play.engineio.{BinaryEngineIOMessage, EngineIOMessage, TextEngineIOMessage}
 
 import scala.collection.immutable
 
@@ -82,7 +84,7 @@ object SocketIOPacket {
   /**
     * When encoding a binary packet, each binary data element will result in an additional packet being sent.
     */
-  def encode(packet: SocketIOPacket): immutable.Seq[EngineIOPacket] = {
+  def encode(packet: SocketIOPacket): List[EngineIOMessage] = {
 
     // First, write packet type. Binary packets get handled specially.
     val message = new StringBuilder
@@ -148,8 +150,8 @@ object SocketIOPacket {
         Nil
     }
 
-    Utf8EngineIOPacket(EngineIOPacketType.Message, message.toString) +:
-      extraPackets.map(BinaryEngineIOPacket(EngineIOPacketType.Message, _))
+    TextEngineIOMessage(message.toString) ::
+      extraPackets.map(BinaryEngineIOMessage)
   }
 
   /**
@@ -252,8 +254,8 @@ object SocketIOPacket {
     }
   }
 
-  private def fillInPlaceholders(data: Seq[Either[JsValue, ByteString]]): (immutable.Seq[JsValue], immutable.Seq[ByteString]) = {
-    data.foldLeft((Vector.empty[JsValue], Vector.empty[ByteString])) {
+  private def fillInPlaceholders(data: Seq[Either[JsValue, ByteString]]): (immutable.Seq[JsValue], List[ByteString]) = {
+    data.foldLeft((List.empty[JsValue], List.empty[ByteString])) {
       case ((jsonData, extra), Left(jsValue)) =>
         (jsonData :+ jsValue, extra)
       case ((jsonData, extra), Right(binaryData)) =>

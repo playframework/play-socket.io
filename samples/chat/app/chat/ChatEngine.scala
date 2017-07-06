@@ -3,9 +3,9 @@ package chat
 import akka.stream.Materializer
 import akka.stream.scaladsl.{BroadcastHub, Flow, Keep, MergeHub}
 import play.api.libs.json.Format
-import play.engineio._
-
+import play.engineio.EngineIOController
 import play.api.libs.functional.syntax._
+import play.socketio.SocketIO
 
 object ChatProtocol {
 
@@ -16,7 +16,7 @@ object ChatProtocol {
       .inmap[ChatMessage](ChatMessage.apply, _.message)
   }
 
-  import SocketIOEventCodec._
+  import play.socketio.SocketIOEventCodec._
 
   val decoder = decoders(
     decodeJson[ChatMessage]("chat message")
@@ -27,7 +27,7 @@ object ChatProtocol {
   }
 }
 
-class ChatEngine(engineIO: EngineIO)(implicit mat: Materializer) {
+class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
 
   import ChatProtocol._
 
@@ -35,10 +35,10 @@ class ChatEngine(engineIO: EngineIO)(implicit mat: Materializer) {
     val (sink, source) = MergeHub.source[ChatMessage]
       .toMat(BroadcastHub.sink)(Keep.both).run
 
-    Flow.fromSinkAndSource(sink, source)
+    Flow.fromSinkAndSourceCoupled(sink, source)
   }
 
-  val controller: EngineIOController = engineIO.builder
+  val controller: EngineIOController = socketIO.builder
     .addNamespace("/chat", decoder, encoder, chatFlow)
-    .build
+    .createController()
 }

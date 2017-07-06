@@ -1,4 +1,4 @@
-package play.engineio
+package play.socketio
 
 import akka.util.ByteString
 import play.api.libs.json.{JsValue, Json, Reads, Writes}

@@ -15,10 +15,14 @@ trait EngineIOSessionHandler {
   /**
     * Create a new flow to handle the flow of messages in the engine.io session.
     *
+    * It may seem odd that the flow produces a `Seq[EngineIOMessage]`. The reason it does this is because socket.io
+    * binary events get encoded into multiple `EngineIOMessage`'s. By producing messages in `Seq`'s, we allow them to
+    * be sent as one payload back to the client, otherwise they would usually be split.
+    *
     * @param request The first request for this session.
     * @param sid The session id.
     */
-  def onConnect(request: RequestHeader, sid: String): Future[Flow[EngineIOMessage, EngineIOMessage, NotUsed]]
+  def onConnect(request: RequestHeader, sid: String): Future[Flow[EngineIOMessage, Seq[EngineIOMessage], NotUsed]]
 
 }
 

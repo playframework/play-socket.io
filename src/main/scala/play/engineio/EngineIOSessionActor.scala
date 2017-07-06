@@ -12,6 +12,7 @@ import play.engineio.protocol._
 import scala.util.control.NonFatal
 
 object EngineIOSessionActor {
+  case class Connected(flow: Flow[EngineIOMessage, Seq[EngineIOMessage], NotUsed])
   case class ConnectionRefused(e: Throwable)
   case class PulledPackets(packets: Seq[EngineIOPacket])
   case object Tick extends DeadLetterSuppression
@@ -30,8 +31,6 @@ class EngineIOSessionActor[SessionData](
   config: EngineIOConfig,
   handler: EngineIOSessionHandler
 )(implicit mat: Materializer) extends Actor with ActorLogging {
-
-  private case class Connected(flow: Flow[EngineIOMessage, EngineIOMessage, NotUsed])
 
   import context.dispatcher
 
@@ -172,17 +171,18 @@ class EngineIOSessionActor[SessionData](
     sessionTimeout = config.pingTimeout.fromNow
   }
 
-  private def doConnect(flow: Flow[EngineIOMessage, EngineIOMessage, NotUsed]): Unit = {
+  private def doConnect(flow: Flow[EngineIOMessage, Seq[EngineIOMessage], NotUsed]): Unit = {
+
+    def messagesToPackets(messages: Seq[EngineIOMessage]) = messages.map {
+      case TextEngineIOMessage(text) => Utf8EngineIOPacket(EngineIOPacketType.Message, text)
+      case BinaryEngineIOMessage(bytes) => BinaryEngineIOPacket(EngineIOPacketType.Message, bytes)
+    }
 
     // Set up flow
     val (sourceQ, sinkQ) = Source.queue[Seq[EngineIOMessage]](1, OverflowStrategy.backpressure)
       .expand(_.iterator)
       .via(flow)
-      .map {
-        case TextEngineIOMessage(text) => Utf8EngineIOPacket(EngineIOPacketType.Message, text)
-        case BinaryEngineIOMessage(bytes) => BinaryEngineIOPacket(EngineIOPacketType.Message, bytes)
-      }
-      .batch(4, Seq(_))(_ :+ _)
+      .batch(4, messagesToPackets)(_ ++ messagesToPackets(_))
       .toMat(Sink.queue[Seq[EngineIOPacket]])(Keep.both)
       .run
 

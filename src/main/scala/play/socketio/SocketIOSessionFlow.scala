@@ -85,12 +85,12 @@ private class SocketIOSessionStage[SessionData](
   errorHandler: PartialFunction[Throwable, JsValue],
   defaultNamespaceCallback: SocketIOSession[SessionData] => Flow[SocketIOEvent, SocketIOEvent, _],
   connectToNamespaceCallback: PartialFunction[(SocketIOSession[SessionData], String), Flow[SocketIOEvent, SocketIOEvent, _]]
-) extends GraphStageWithMaterializedValue[BidiShape[EngineIOMessage, NamespacedSocketIOMessage, NamespacedSocketIOMessage, EngineIOMessage], DemuxMuxReceiver] {
+) extends GraphStageWithMaterializedValue[BidiShape[EngineIOMessage, NamespacedSocketIOMessage, NamespacedSocketIOMessage, Seq[EngineIOMessage]], DemuxMuxReceiver] {
 
   val engineIOIn = Inlet[EngineIOMessage]("EngineIOIn")
   val socketIOOut = Outlet[NamespacedSocketIOMessage]("SocketIOOut")
   val socketIOIn = Inlet[NamespacedSocketIOMessage]("SocketIOIn")
-  val engineIOOut = Outlet[EngineIOMessage]("EngineIOOut")
+  val engineIOOut = Outlet[Seq[EngineIOMessage]]("EngineIOOut")
 
   override def shape = BidiShape(engineIOIn, socketIOOut, socketIOIn, engineIOOut)
   override def createLogicAndMaterializedValue(inheritedAttributes: Attributes) = {
@@ -122,9 +122,9 @@ private class SocketIOSessionStage[SessionData](
       // Callback used to push messages directly to engine.io, used for acks
       val packetCallback = createAsyncCallback[SocketIOPacket](pushSocketIOPacket)
 
-      // Buffers for messages going out to the engine.io/socket.io sides
-      var engineIOBuffer = List.empty[EngineIOMessage]
-      var socketIOBuffer = List.empty[NamespacedSocketIOMessage]
+      // Buffer for outgoing engine.io messages. Needed because we are merging two sources,
+      // plus acks can come in at any time and need to be added to the buffer.
+      var engineIOBuffer = Seq.empty[EngineIOMessage]
 
       // Binary packet tracking, since a binary socket.io packet gets fragmented across many
       // engine.io packets
@@ -164,7 +164,7 @@ private class SocketIOSessionStage[SessionData](
               if (remaining > 0) {
                 currentBinaryPacket = Some(packet)
                 currentBinaryPacketRemaining = remaining
-                pullAll()
+                pull(engineIOIn)
               } else {
                 handleSocketIOPacket(packet)
               }
@@ -187,29 +187,32 @@ private class SocketIOSessionStage[SessionData](
                 currentBinaryPacketFragments = IndexedSeq.empty
                 currentBinaryPacket = None
               } else {
-                pullAll()
+                pull(engineIOIn)
               }
           }
         }
 
-        override def onPull() = engineIOBuffer match {
-          case Nil =>
+        override def onPull() = {
+          if (engineIOBuffer.nonEmpty) {
+            push(engineIOOut, engineIOBuffer)
+            engineIOBuffer = Nil
             if (isClosed(socketIOIn)) {
               complete(engineIOOut)
-            } else {
-              pullAll()
             }
-          case head :: remaining =>
-            push(engineIOOut, head)
-            engineIOBuffer = remaining
-            if (remaining.isEmpty && isClosed(socketIOIn)) {
-              complete(engineIOOut)
+          } else {
+            if (isAvailable(socketIOOut)) {
+              maybePull(engineIOIn)
             }
+            maybePull(socketIOIn)
+          }
         }
 
         override def onUpstreamFinish() = {
           complete(socketIOOut)
           cancel(socketIOIn)
+          if (engineIOBuffer.isEmpty) {
+            complete(engineIOOut)
+          }
         }
 
         override def onUpstreamFailure(ex: Throwable) = {
@@ -228,7 +231,7 @@ private class SocketIOSessionStage[SessionData](
                 pushSocketIOPacket(SocketIODisconnectPacket(namespace))
               } else {
                 // Ignore, the client doesn't want to hear about it
-                pullAll()
+                pull(socketIOIn)
               }
 
             case NamespacedSocketIOEvent(namespace, event) =>
@@ -256,11 +259,8 @@ private class SocketIOSessionStage[SessionData](
         }
 
         override def onPull() = {
-          socketIOBuffer match {
-            case Nil => pullAll()
-            case head :: remaining =>
-              push(socketIOOut, head)
-              socketIOBuffer = remaining
+          if (isAvailable(engineIOOut)) {
+            pull(engineIOIn)
           }
         }
 
@@ -296,7 +296,7 @@ private class SocketIOSessionStage[SessionData](
 
         case SocketIODisconnectPacket(namespace) =>
           validateNamespace(namespace) {
-            pushSocketIOMessage(DisconnectSocketIONamespace(namespace, None))
+            push(socketIOOut, DisconnectSocketIONamespace(namespace, None))
             // The socket.io client forgets about a namespace as soon as it sends a disconnect,
             // so there's no point in us waiting around to receive the disconnect message out of
             // the namespace before we remove it
@@ -312,7 +312,7 @@ private class SocketIOSessionStage[SessionData](
 
             val ack = maybeAckId.map(ackId => new FlowCallbackAck(packetCallback.invoke, namespace, ackId))
 
-            pushSocketIOMessage(NamespacedSocketIOEvent(namespace, SocketIOEvent(eventName, data.drop(1).map(Left.apply), ack)))
+            push(socketIOOut, NamespacedSocketIOEvent(namespace, SocketIOEvent(eventName, data.drop(1).map(Left.apply), ack)))
           }
 
         case SocketIOAckPacket(namespace, args, ackId) =>
@@ -321,14 +321,14 @@ private class SocketIOSessionStage[SessionData](
               case Some((_, ackFunction)) =>
                 ackFunction(args.map(Left.apply))
                 ackFunctions -= ackId
-                pullAll()
+                pull(engineIOIn)
               case None =>
                 pushError(namespace, UnknownAckId(ackId))
             }
           }
 
         case SocketIOErrorPacket(namespace, error) =>
-          pushSocketIOMessage(DisconnectSocketIONamespace(namespace, Some(ErrorFromClient(error))))
+          push(socketIOOut, DisconnectSocketIONamespace(namespace, Some(ErrorFromClient(error))))
 
         case SocketIOBinaryEventPacket(namespace, data, maybeAckId) =>
           validateNamespace(namespace) {
@@ -340,7 +340,7 @@ private class SocketIOSessionStage[SessionData](
 
             val ack = maybeAckId.map(ackId => new FlowCallbackAck(packetCallback.invoke, namespace, ackId))
 
-            pushSocketIOMessage(NamespacedSocketIOEvent(namespace, SocketIOEvent(eventName, data.drop(1), ack)))
+            push(socketIOOut, NamespacedSocketIOEvent(namespace, SocketIOEvent(eventName, data.drop(1), ack)))
           }
 
         case SocketIOBinaryAckPacket(namespace, args, ackId) =>
@@ -349,7 +349,7 @@ private class SocketIOSessionStage[SessionData](
               case Some((_, ackFunction)) =>
                 ackFunction(args)
                 ackFunctions -= ackId
-                pullAll()
+                pull(engineIOIn)
               case None =>
                 pushError(namespace, UnknownAckId(ackId))
             }
@@ -376,13 +376,6 @@ private class SocketIOSessionStage[SessionData](
         }
       }
 
-      def pullAll() = {
-        if (isAvailable(engineIOOut) && isAvailable(socketIOOut)) {
-          maybePull(engineIOIn)
-          maybePull(socketIOIn)
-        }
-      }
-
       def cleanupAcks(): Unit = {
         ackFunctions = ackFunctions.filterNot {
           case (_, (deadline, _)) => deadline.isOverdue()
@@ -394,20 +387,13 @@ private class SocketIOSessionStage[SessionData](
       }
 
       def pushSocketIOPacket(packet: SocketIOPacket) = {
-        engineIOBuffer :::= SocketIOPacket.encode(packet)
+        engineIOBuffer ++= SocketIOPacket.encode(packet)
         if (isAvailable(engineIOOut)) {
-          push(engineIOOut, engineIOBuffer.head)
-          engineIOBuffer = engineIOBuffer.tail
+          push(engineIOOut, engineIOBuffer)
+          engineIOBuffer = Nil
         }
       }
 
-      def pushSocketIOMessage(message: NamespacedSocketIOMessage): Unit = {
-        socketIOBuffer :+= message
-        if (isAvailable(socketIOOut)) {
-          push(socketIOOut, socketIOBuffer.head)
-          socketIOBuffer = socketIOBuffer.tail
-        }
-      }
     }
 
     (logic, logic)

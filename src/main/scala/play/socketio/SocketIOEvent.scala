@@ -141,7 +141,7 @@ object SocketIOEventDecoder {
   }
 }
 
-trait SocketIOEventEncoder[T] { self =>
+trait SocketIOEventEncoder[-T] { self =>
 
   def encode: PartialFunction[Any, SocketIOEvent]
 

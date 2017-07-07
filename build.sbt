@@ -51,3 +51,14 @@ lazy val chat = (project in file("samples/chat"))
 
     libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.3.0" % Provided
   )
+
+lazy val multiRoomChat = (project in file("samples/multi-room-chat"))
+  .enablePlugins(PlayScala)
+  .dependsOn(root)
+  .settings(
+    name := "play-socket.io-multi-room-chat-example",
+    organization := "com.lightbend.play",
+    scalaVersion := "2.12.2",
+
+    libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.3.0" % Provided
+  )

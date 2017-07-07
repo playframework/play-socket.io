@@ -7,37 +7,39 @@ import play.engineio.EngineIOController
 import play.api.libs.functional.syntax._
 import play.socketio.SocketIO
 
-object ChatProtocol {
-
-  case class ChatMessage(message: String)
-
-  object ChatMessage {
-    implicit val format: Format[ChatMessage] = implicitly[Format[String]]
-      .inmap[ChatMessage](ChatMessage.apply, _.message)
-  }
+/**
+  * A simple chat engine.
+  */
+class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
 
   import play.socketio.SocketIOEventCodec._
 
+  // This will decode String "chat message" events coming in
   val decoder = decoders(
-    decodeJson[ChatMessage]("chat message")
+    decodeJson[String]("chat message")
   )
 
+  // This will encode String "chat message" events going out
   val encoder = encoders {
-    case _: ChatMessage => encodeJson[ChatMessage]("chat message")
+    case _: String => encodeJson[String]("chat message")
   }
-}
-
-class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
-
-  import ChatProtocol._
 
   private val chatFlow = {
-    val (sink, source) = MergeHub.source[ChatMessage]
+    // We use a MergeHub to merge all the incoming chat messages from all the
+    // connected users into one flow, and we feed that straight into a
+    // BroadcastHub to broadcast them out again to all the connected users.
+    // See http://doc.akka.io/docs/akka/snapshot/scala/stream/stream-dynamic.html
+    // for details on these features.
+    val (sink, source) = MergeHub.source[String]
       .toMat(BroadcastHub.sink)(Keep.both).run
 
+    // We couple the sink and source together so that one completes, the other
+    // will to, and we use this to handle our chat
     Flow.fromSinkAndSourceCoupled(sink, source)
   }
 
+  // Here we create an EngineIOController to handle requests for our chat
+  // system, and we add the chat flow under the "/chat" namespace.
   val controller: EngineIOController = socketIO.builder
     .addNamespace("/chat", decoder, encoder, chatFlow)
     .createController()

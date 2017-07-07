@@ -27,21 +27,35 @@ object RunSocketIOTests extends App {
   var passCount = 0
   var failCount = 0
 
-  withCloseable(TestSocketIOServer.start(ServerConfig(
-    port = Some(port)
-  )))(_.stop()) { _ =>
+  val driver = new PhantomJSDriver(capabilities)
 
-    withCloseable(new PhantomJSDriver(capabilities))(_.quit()) { driver =>
+  Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
+    def run(): Unit = driver.quit()
+  }))
+
+  try {
+    withCloseable(TestSocketIOServer.start(ServerConfig(
+      port = Some(port)
+    )))(_.stop()) { _ =>
+
 
       driver.navigate().to(s"http://localhost:$port/index.html?dontrun=true&jsonp=true")
       driver.executeScript("runMocha();")
       consume(driver, System.currentTimeMillis())
-
     }
+
+
+  } finally {
+    driver.quit()
   }
+
 
   if (failCount > 0) {
     System.exit(1)
+  }
+
+  def runTests(): Unit = {
+
   }
 
   @annotation.tailrec

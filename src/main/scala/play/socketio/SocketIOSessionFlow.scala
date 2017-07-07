@@ -114,7 +114,7 @@ private class SocketIOSessionStage[SessionData](
         }
 
         // And connect to the default namespace
-        connectNamespace(SocketIOConnectPacket(None), defaultNamespaceCallback(session))
+        connectNamespace(None, defaultNamespaceCallback(session))
       }
 
       import SocketIOSessionException._
@@ -273,16 +273,19 @@ private class SocketIOSessionStage[SessionData](
 
       def handleSocketIOPacket(packet: SocketIOPacket): Unit = packet match {
 
-        case packet@SocketIOConnectPacket(namespace) =>
+        case packet@SocketIOConnectPacket(nsWithQuery) =>
+
+          val namespace = nsWithQuery.map(_.takeWhile(_ != '?'))
+
           if (activeNamespaces(namespace)) {
             pushError(namespace, NamespaceAlreadyConnected(namespace))
           } else {
             try {
               namespace match {
                 case None =>
-                  connectNamespace(packet, defaultNamespaceCallback(session))
+                  connectNamespace(namespace, defaultNamespaceCallback(session))
                 case Some(ns) =>
-                  connectNamespace(packet,
+                  connectNamespace(namespace,
                     connectToNamespaceCallback.applyOrElse((session, ns),
                       { _: (SocketIOSession[SessionData], String) => throw NamespaceNotFound(namespace) }
                     )
@@ -364,10 +367,10 @@ private class SocketIOSessionStage[SessionData](
         }
       }
 
-      def connectNamespace(packet: SocketIOConnectPacket, flow: Flow[SocketIOEvent, SocketIOEvent, _]) = {
-        activeNamespaces += packet.namespace
-        demuxMuxer.addNamespace(packet.namespace, flow)
-        pushSocketIOPacket(packet)
+      def connectNamespace(namespace: Option[String], flow: Flow[SocketIOEvent, SocketIOEvent, _]) = {
+        activeNamespaces += namespace
+        demuxMuxer.addNamespace(namespace, flow)
+        pushSocketIOPacket(SocketIOConnectPacket(namespace))
       }
 
       def maybePull(in: Inlet[_]) = {

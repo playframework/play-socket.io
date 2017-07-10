@@ -27,6 +27,7 @@ trait EngineIOSessionHandler {
 }
 
 case class UnknownSessionId(sid: String) extends RuntimeException("Unknown session id: " + sid, null, true, false)
+case object SessionClosed extends RuntimeException("Session closed", null, true, false)
 
 /**
   * An engine io message, either binary or text.

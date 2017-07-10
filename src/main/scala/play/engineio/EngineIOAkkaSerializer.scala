@@ -7,7 +7,6 @@ import com.google.protobuf.{ByteString => PByteString}
 import play.engineio.EngineIOManagerActor._
 import play.engineio.protocol._
 import play.engineio.protobuf.{engineio => p}
-import play.socketio.protocol.SocketIOEncodingException
 
 /**
   * Serializer for all messages sent to/from the EngineIOManagerActor.
@@ -19,7 +18,8 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
   private val RetrieveManifest = "C"
   private val CloseManifest = "D"
   private val EngineIOEncodingExceptionManifest = "E"
-  private val SocketIOEncodingExceptionManifest = "F"
+  private val UnknownSessionIdManifest = "F"
+  private val SessionClosedManifest = "G"
 
   override def manifest(obj: AnyRef) = obj match {
     case _: Connect => ConnectManifest
@@ -27,7 +27,8 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
     case _: Retrieve => RetrieveManifest
     case _: Close => CloseManifest
     case _: EngineIOEncodingException => EngineIOEncodingExceptionManifest
-    case _: SocketIOEncodingException => SocketIOEncodingExceptionManifest
+    case _: UnknownSessionId => UnknownSessionIdManifest
+    case SessionClosed => SessionClosedManifest
     case _ =>
       throw new IllegalArgumentException(s"I don't know how to serialize object of type ${obj.getClass}")
   }
@@ -57,11 +58,11 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
       case EngineIOEncodingException(message) =>
         p.EngineIOEncodingException(message)
 
-      case SocketIOEncodingException(packet, message, null) =>
-        p.SocketIOEncodingException(packet, message)
+      case UnknownSessionId(sid) =>
+        p.UnknownSessionId(sid)
 
-      case SocketIOEncodingException(packet, message, cause) =>
-        p.SocketIOEncodingException(packet, message + ": " + cause.toString)
+      case SessionClosed =>
+        p.SessionClosed()
 
       case other =>
         throw new RuntimeException("Don't know how to serialize " + other)
@@ -102,9 +103,12 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
       val exception = p.EngineIOEncodingException.parseFrom(bytes)
       EngineIOEncodingException(exception.message)
 
-    case `SocketIOEncodingExceptionManifest` =>
-      val exception = p.SocketIOEncodingException.parseFrom(bytes)
-      SocketIOEncodingException(exception.packet, exception.message)
+    case `UnknownSessionIdManifest` =>
+      val exception = p.UnknownSessionId.parseFrom(bytes)
+      UnknownSessionId(exception.sid)
+
+    case `SessionClosedManifest` =>
+      SessionClosed
 
     case _ =>
       throw new IllegalArgumentException(s"I don't know how to deserialize object with manifest [$manifest]")

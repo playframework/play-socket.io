@@ -160,13 +160,18 @@ private class SocketIOSessionStage[SessionData](
               )
 
             case (TextEngineIOMessage(text), None) =>
-              val (packet, remaining) = SocketIOPacket.decode(text)
-              if (remaining > 0) {
-                currentBinaryPacket = Some(packet)
-                currentBinaryPacketRemaining = remaining
-                pull(engineIOIn)
-              } else {
-                handleSocketIOPacket(packet)
+              try {
+                val (packet, remaining) = SocketIOPacket.decode(text)
+                if (remaining > 0) {
+                  currentBinaryPacket = Some(packet)
+                  currentBinaryPacketRemaining = remaining
+                  pull(engineIOIn)
+                } else {
+                  handleSocketIOPacket(packet)
+                }
+              } catch {
+                case e: SocketIOEncodingException =>
+                  pushError(None, e)
               }
 
             case (BinaryEngineIOMessage(bytes), Some(binaryPacket)) =>

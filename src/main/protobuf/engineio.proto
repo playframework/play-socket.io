@@ -68,11 +68,14 @@ message Close {
   string requestId = 3;
 }
 
+// engine.io exceptions
+
 message EngineIOEncodingException {
   string message = 1;
 }
 
-message SocketIOEncodingException {
-  string packet = 1;
-  string message = 2;
+message UnknownSessionId {
+  string sid = 1;
 }
+
+message SessionClosed {}

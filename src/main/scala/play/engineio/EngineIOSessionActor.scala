@@ -89,6 +89,9 @@ class EngineIOSessionActor[SessionData](
       case (transport, (RetrieveRequester(requester, requestId))) =>
         requester ! Close(sid, transport, requestId)
     }
+    messagesReceivedSenders.foreach { messageSender =>
+      messageSender ! Status.Failure(SessionClosed)
+    }
 
     if (sourceQueue != null) {
       sourceQueue.complete()

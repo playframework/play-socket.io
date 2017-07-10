@@ -14,11 +14,13 @@ lazy val root = (project in file("."))
     libraryDependencies ++= Seq(
       "com.typesafe.play" %% "play" % playVersion,
       "com.typesafe.akka" %% "akka-remote" % "2.5.3",
+
       "com.typesafe.play" %% "play-akka-http-server" % playVersion % Test,
       "com.softwaremill.macwire" %% "macros" % "2.3.0" % Test,
       "com.typesafe.play" %% "play-logback" % playVersion % Test,
       "ch.racic.selenium" % "selenium-driver-helper-phantomjs" % "2.1.1" % Test,
-      "com.github.detro" % "ghostdriver" % "2.1.0" % Test
+      "com.github.detro" % "ghostdriver" % "2.1.0" % Test,
+      "org.scalatest" %% "scalatest" % "3.0.1" % Test
     ),
 
     PB.targets in Compile := Seq(

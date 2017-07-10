@@ -43,16 +43,16 @@ object ChatProtocol {
 
   import play.socketio.SocketIOEventCodec._
 
-  val decoder = decoders(
-    decodeJson[ChatMessage]("chat message"),
-    decodeJson[JoinRoom]("join room"),
-    decodeJson[LeaveRoom]("leave room")
-  )
+  val decoder = decodeByName {
+    case "chat message" => decodeJson[ChatMessage]
+    case "join room" => decodeJson[JoinRoom]
+    case "leave room" => decodeJson[LeaveRoom]
+  }
 
-  val encoder = encoders {
-    case _: ChatMessage => encodeJson[ChatMessage]("chat message")
-    case _: JoinRoom => encodeJson[JoinRoom]("join room")
-    case _: LeaveRoom => encodeJson[LeaveRoom]("leave room")
+  val encoder = encodeByType[ChatEvent] {
+    case _: ChatMessage => "chat message" -> encodeJson[ChatMessage]
+    case _: JoinRoom => "join room" -> encodeJson[JoinRoom]
+    case _: LeaveRoom => "leave room" -> encodeJson[LeaveRoom]
   }
 }
 

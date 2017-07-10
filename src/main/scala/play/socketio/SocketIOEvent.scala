@@ -38,13 +38,18 @@ case class SocketIOSession[+T](sid: String, data: T)
   */
 case class SocketIOEvent(name: String, arguments: Seq[Either[JsValue, ByteString]], ack: Option[SocketIOEventAck])
 
+object SocketIOEvent {
+  def unnamed(arguments: Seq[Either[JsValue, ByteString]], ack: Option[SocketIOEventAck]) =
+    SocketIOEvent("<unnamed>", arguments, ack)
+}
+
 /**
   * A socket.io ack function.
   */
 trait SocketIOEventAck extends (Seq[Either[JsValue, ByteString]] => Unit)
 
 /**
-  * Convenient to create an ack function.
+  * Convenience to create an ack function.
   */
 object SocketIOEventAck {
   def apply(ack: Seq[Either[JsValue, ByteString]] => Unit): SocketIOEventAck = new SocketIOEventAck {
@@ -52,178 +57,248 @@ object SocketIOEventAck {
   }
 }
 
+/**
+  * Exception thrown when there was an error encoding or decoding an event.
+  */
+class SocketIOEventCodecException(message: String) extends RuntimeException(message)
+
+/**
+  * DSL for creating SocketIOEvents.
+  */
 object SocketIOEventCodec {
 
-  def decoders[T](decoders: SocketIOEventDecoder[T]*): SocketIOEventDecoder[T] =
-    SocketIOEventDecoder.compose(decoders: _*)
+  type SocketIOEventsDecoder[+T] = PartialFunction[SocketIOEvent, T]
+  type SocketIOEventDecoder[+T] = SocketIOEvent => T
 
-  def decodeJson[T: Reads](name: String): SocketIOEventDecoder[T] =
-    SocketIOEventDecoder.json[T](name)
+  type SocketIOEventsEncoder[-T] = PartialFunction[T, SocketIOEvent]
+  type SocketIOEventEncoder[-T] = T => SocketIOEvent
 
-  def decodeJsonAck[T: Reads]: SocketIOAckDecoder[T] =
-    SocketIOAckDecoder.json[T]
+  def decodeByName[T](decoders: PartialFunction[String, SocketIOEventDecoder[T]]): SocketIOEventsDecoder[T] =
+    new PartialFunction[SocketIOEvent, T] {
+      override def isDefinedAt(event: SocketIOEvent) = decoders.isDefinedAt(event.name)
+      override def apply(event: SocketIOEvent) = decoders(event.name)(event)
+      override def applyOrElse[A1 <: SocketIOEvent, B1 >: T](event: A1, default: (A1) => B1) = {
+        decoders.andThen(decoder => decoder.apply(event))
+          .applyOrElse(event.name, { _: String => default(event) })
+      }
+    }
 
-  def encoders[T](encoders: PartialFunction[Any, SocketIOEventEncoder[_ <: T]]): SocketIOEventEncoder[T] =
-    SocketIOEventEncoder.compose[T](encoders)
+  def decodeJson[T: Reads]: SocketIOArgDecoder[T] = SocketIOArgDecoder.json[T]
 
-  def encodeJson[T: Writes](name: String): SocketIOEventEncoder[T] =
-    SocketIOEventEncoder.json[T](name)
-
-  def encodeJsonAck[T: Writes]: SocketIOAckEncoder[T] =
-    SocketIOAckEncoder.json[T]
-}
-
-trait SocketIOEventDecoder[+T] {
-  self =>
-
-  def decode: PartialFunction[SocketIOEvent, T]
-
-  def map[S](f: T => S) = new SocketIOEventDecoder[S] {
-    override def decode = self.decode.andThen(f)
-  }
-
-  def zip[A](decoder: SocketIOEventDecoder[A]): SocketIOEventDecoder[(T, A)] = new SocketIOEventDecoder[(T, A)] {
-    override def decode = new PartialFunction[SocketIOEvent, (T, A)] {
-      override def isDefinedAt(e: SocketIOEvent) = self.decode.isDefinedAt(e)
-      override def apply(e: SocketIOEvent) = applyOrElse(e, (_: SocketIOEvent) => throw new MatchError(e))
-      override def applyOrElse[E1 <: SocketIOEvent, B1 >: (T, A)](e: E1, default: (E1) => B1) = {
-        self.decode.andThen { t =>
-          (t, decoder.decode(e))
-        }.applyOrElse(e, default)
+  def encodeByType[T](encoders: PartialFunction[T, (String, SocketIOEventEncoder[_ <: T])]): SocketIOEventsEncoder[T] = {
+    new PartialFunction[T, SocketIOEvent] {
+      override def isDefinedAt(t: T) = encoders.isDefinedAt(t)
+      override def apply(t: T) = {
+        val (name, encoder) = encoders.apply(t)
+        encoder.asInstanceOf[Function[Any, SocketIOEvent]](t).copy(name = name)
+      }
+      override def applyOrElse[T1 <: T, B1 >: SocketIOEvent](t: T1, default: (T1) => B1) = {
+        encoders.andThen {
+          case (name, encoder) => encoder.asInstanceOf[Function[Any, SocketIOEvent]](t).copy(name = name)
+        }.applyOrElse(t, default)
       }
     }
   }
 
-  def zipWith[A, S](decoder: SocketIOEventDecoder[A])(f: (T, A) => S): SocketIOEventDecoder[S] =
-    zip(decoder).map(f.tupled)
+  def encodeJson[T: Writes]: SocketIOArgEncoder[T] = SocketIOArgEncoder.json[T]
 
-  def withMaybeAck[A](ackEncoder: SocketIOAckEncoder[A]): SocketIOEventDecoder[(T, Option[A => Unit])] =
-    zip(new SocketIOEventDecoder[Option[A => Unit]] {
-      def decode = {
-        case SocketIOEvent(_, _, None) => None
-        case SocketIOEvent(_, _, Some(ack)) =>
-          Some(ack.compose(ackEncoder.encode))
-      }
-    })
-
-  def withAck[A](ackEncoder: SocketIOAckEncoder[A]): SocketIOEventDecoder[(T, A => Unit)] =
-    withMaybeAck(ackEncoder).map {
-      case (t, maybeAck) => (t, maybeAck.getOrElse(throw new RuntimeException("Excepted ack but none found")))
-    }
-
-}
-
-object SocketIOEventDecoder {
-
-  def raw: SocketIOEventDecoder[SocketIOEvent] = new SocketIOEventDecoder[SocketIOEvent] {
-    override def decode = {
-      case event => event
-    }
-  }
-
-  def apply[T](name: String)(decoder: SocketIOEvent => T): SocketIOEventDecoder[T] = new SocketIOEventDecoder[T] {
-    override def decode = {
-      case event if event.name == name => decoder(event)
-    }
-  }
-
-  def compose[T](decoders: SocketIOEventDecoder[T]*): SocketIOEventDecoder[T] = new SocketIOEventDecoder[T] {
-    override def decode = {
-      decoders.foldLeft(PartialFunction.empty[SocketIOEvent, T])(_ orElse _.decode)
-    }
-  }
-
-  def json[T: Reads](name: String): SocketIOEventDecoder[T] = apply(name) { event =>
-    event.arguments.headOption.flatMap(_.left.toOption) match {
-      case Some(jsValue) => jsValue.as[T]
-      case None => throw new RuntimeException("No arguments found to decode")
-    }
-  }
-}
-
-trait SocketIOEventEncoder[-T] { self =>
-
-  def encode: PartialFunction[Any, SocketIOEvent]
-
-  def contramap[S](f: S => T) = SocketIOEventEncoder {
-    case s: S => self.encode(f(s))
-  }
-
-  def withAck[A, S](ackDecoder: SocketIOAckDecoder[A]): SocketIOEventEncoder[(T, A => Unit)] = new SocketIOEventEncoder[(T, A => Unit)] {
-    override def encode = {
-      case (t: T, ack: (A => Unit)) =>
-        val decodedAck = SocketIOEventAck { args =>
-          ack(ackDecoder.decode(args))
+  implicit class SocketIOSingleArgDecoderBuilder[T](first: SocketIOArgDecoder[T]) {
+    def and[T1](second: SocketIOArgDecoder[T1]): SocketIOArgsDecoder[(T, T1)] = {
+      SocketIOArgsDecoder { args =>
+        if (args.length < 2) {
+          throw new SocketIOEventCodecException("Needed 2 arguments to decode, but got " + args.length)
         }
-        self.encode(t).copy(ack = Some(decodedAck))
-    }
-  }
-}
-
-object SocketIOEventEncoder {
-
-  def raw: SocketIOEventEncoder[SocketIOEvent] = new SocketIOEventEncoder[SocketIOEvent] {
-    override def encode = {
-      case event: SocketIOEvent => event
-    }
-  }
-
-  def apply[T](encoder: PartialFunction[Any, SocketIOEvent]): SocketIOEventEncoder[T] = new SocketIOEventEncoder[T] {
-    override def encode = encoder
-  }
-
-  def compose[T](encoders: PartialFunction[Any, SocketIOEventEncoder[_ <: T]]): SocketIOEventEncoder[T] = new SocketIOEventEncoder[T] {
-    override def encode = Function.unlift { t: Any =>
-      encoders.lift(t).flatMap { encoder =>
-        encoder.encode.lift(t)
+        (first.decodeArg(args(0)), second.decodeArg(args(1)))
       }
     }
+
+    def ~[T1](second: SocketIOArgDecoder[T1]): SocketIOArgsDecoder[(T, T1)] = and(second)
+
+    def withAckEncoder[A](encoder: SocketIOArgsEncoder[A]): SocketIOEventCodec.SocketIOEventDecoder[(T, A => Unit)] = { event =>
+      val ack = event.ack.getOrElse {
+        throw new SocketIOEventCodecException("Expected ack")
+      }
+      (first(event), ack.compose(encoder.encodeArgs))
+    }
+
+    def withMaybeAckEncoder[A](encoder: SocketIOArgsEncoder[A]): SocketIOEventCodec.SocketIOEventDecoder[(T, Option[A => Unit])] = { event =>
+      (first(event), event.ack.map { ack =>
+        ack.compose(encoder.encodeArgs)
+      })
+    }
   }
 
-  def json[T: Writes](name: String): SocketIOEventEncoder[T] = apply {
-    case t: T => SocketIOEvent(name, Seq(Left(Json.toJson(t))), None)
+  implicit class SocketIOTwoArgDecoderBuilder[T1, T2](init: SocketIOArgsDecoder[(T1, T2)]) {
+    def and[T3](third: SocketIOArgDecoder[T3]): SocketIOArgsDecoder[(T1, T2, T3)] = {
+      SocketIOArgsDecoder { args =>
+        if (args.length < 3) {
+          throw new SocketIOEventCodecException("Needed 3 arguments to decode, but got " + args.length)
+        }
+        val initArgs = init.decodeArgs(args)
+        (initArgs._1, initArgs._2, third.decodeArg(args(2)))
+      }
+    }
+
+    def ~[T3](third: SocketIOArgDecoder[T3]): SocketIOArgsDecoder[(T1, T2, T3)] = and(third)
+
+    def withAckEncoder[A](encoder: SocketIOArgsEncoder[A]): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, A => Unit)] = { event =>
+      val ack = event.ack.getOrElse {
+        throw new SocketIOEventCodecException("Expected ack")
+      }
+      val args = init(event)
+      (args._1, args._2, ack.compose(encoder.encodeArgs))
+    }
+
+    def withMaybeAckEncoder[A](encoder: SocketIOArgsEncoder[A]): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, Option[A => Unit])] = { event =>
+      val args = init(event)
+      (args._1, args._2, event.ack.map { ack =>
+        ack.compose(encoder.encodeArgs)
+      })
+    }
   }
-}
 
-trait SocketIOAckDecoder[+T] { self =>
+  implicit class SocketIOThreeArgDecoderBuilder[T1, T2, T3](init: SocketIOArgsDecoder[(T1, T2, T3)]) {
+    def and[T4](fourth: SocketIOArgDecoder[T4]): SocketIOArgsDecoder[(T1, T2, T3, T4)] = {
+      SocketIOArgsDecoder { args =>
+        if (args.length < 4) {
+          throw new SocketIOEventCodecException("Needed 4 arguments to decode, but got " + args.length)
+        }
+        val initArgs = init.decodeArgs(args)
+        (initArgs._1, initArgs._2, initArgs._3, fourth.decodeArg(args(3)))
+      }
+    }
 
-  def decode(args: Seq[Either[JsValue, ByteString]]): T
+    def ~[T4](fourth: SocketIOArgDecoder[T4]): SocketIOArgsDecoder[(T1, T2, T3, T4)] = and(fourth)
 
-  def map[S](f: T => S): SocketIOAckDecoder[S] = SocketIOAckDecoder[S] { args =>
-    f(self.decode(args))
+    def withAckEncoder[A](encoder: SocketIOArgsEncoder[A]): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, T3, A => Unit)] = { event =>
+      val ack = event.ack.getOrElse {
+        throw new SocketIOEventCodecException("Expected ack")
+      }
+      val args = init(event)
+      (args._1, args._2, args._3, ack.compose(encoder.encodeArgs))
+    }
+
+    def withMaybeAckEncoder[A](encoder: SocketIOArgsEncoder[A]): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, T3, Option[A => Unit])] = { event =>
+      val args = init(event)
+      (args._1, args._2, args._3, event.ack.map { ack =>
+        ack.compose(encoder.encodeArgs)
+      })
+    }
   }
-}
 
-object SocketIOAckDecoder {
+  implicit class SocketIOSingleArgEncoderBuilder[T](first: SocketIOArgEncoder[T]) {
+    def and[T1](second: SocketIOArgEncoder[T1]): SocketIOArgsEncoder[(T, T1)] = {
+      SocketIOArgsEncoder {
+        case (t, t1) => Seq(first.encodeArg(t), second.encodeArg(t1))
+      }
+    }
 
-  def apply[T](decoder: Seq[Either[JsValue, ByteString]] => T): SocketIOAckDecoder[T] = new SocketIOAckDecoder[T] {
-    override def decode(args: Seq[Either[JsValue, ByteString]]) = decoder(args)
+    def ~[T1](second: SocketIOArgEncoder[T1]): SocketIOArgsEncoder[(T, T1)] = and(second)
+
+    def withAckDecoder[A](decoder: SocketIOArgsDecoder[A]): SocketIOEventCodec.SocketIOEventEncoder[(T, A => Unit)] = {
+      case (t, ack) =>
+        SocketIOEvent.unnamed(Seq(first.encodeArg(t)), Some(SocketIOEventAck(ack.compose(decoder.decodeArgs))))
+    }
   }
 
-  def json[T: Reads]: SocketIOAckDecoder[T] = SocketIOAckDecoder { args =>
-    args.headOption.flatMap(_.left.toOption) match {
-      case Some(jsValue) => jsValue.as[T]
-      case None => throw new RuntimeException("No arguments found to decode")
+  implicit class SocketIOTwoArgEncoderBuilder[T1, T2](init: SocketIOArgsEncoder[(T1, T2)]) {
+    def and[T3](third: SocketIOArgEncoder[T3]): SocketIOArgsEncoder[(T1, T2, T3)] = {
+      SocketIOArgsEncoder {
+        case (t1, t2, t3) =>
+          val initArgs = init.encodeArgs((t1, t2))
+          initArgs :+ third.encodeArg(t3)
+      }
+    }
+
+    def ~[T3](third: SocketIOArgEncoder[T3]): SocketIOArgsEncoder[(T1, T2, T3)] = and(third)
+
+    def withAckDecoder[A](decoder: SocketIOArgsDecoder[A]): SocketIOEventCodec.SocketIOEventEncoder[(T1, T2, A => Unit)] = {
+      case (t1, t2, ack) =>
+        SocketIOEvent.unnamed(init.encodeArgs((t1, t2)), Some(SocketIOEventAck(ack.compose(decoder.decodeArgs))))
+    }
+  }
+
+  implicit class SocketIOThreeArgEncoderBuilder[T1, T2, T3](init: SocketIOArgsEncoder[(T1, T2, T3)]) {
+    def and[T4](fourth: SocketIOArgEncoder[T4]): SocketIOArgsEncoder[(T1, T2, T3, T4)] = {
+      SocketIOArgsEncoder {
+        case (t1, t2, t3, t4) =>
+          val initArgs = init.encodeArgs((t1, t2, t3))
+          initArgs :+ fourth.encodeArg(t4)
+      }
+    }
+
+    def ~[T4](fourth: SocketIOArgEncoder[T4]): SocketIOArgsEncoder[(T1, T2, T3, T4)] = and(fourth)
+
+    def withAckDecoder[A](decoder: SocketIOArgsDecoder[A]): SocketIOEventCodec.SocketIOEventEncoder[(T1, T2, T3, A => Unit)] = {
+      case (t1, t2, t3, ack) =>
+        SocketIOEvent.unnamed(init.encodeArgs((t1, t2, t3)), Some(SocketIOEventAck(ack.compose(decoder.decodeArgs))))
     }
   }
 }
 
-trait SocketIOAckEncoder[T] { self =>
+trait SocketIOArgsDecoder[+T] extends SocketIOEventCodec.SocketIOEventDecoder[T] {
+  def decodeArgs(args: Seq[Either[JsValue, ByteString]]): T
 
-  def encode(t: T): Seq[Either[JsValue, ByteString]]
+  override def apply(event: SocketIOEvent) = decodeArgs(event.arguments)
+}
 
-  def contramap[S](f: S => T): SocketIOAckEncoder[S] = SocketIOAckEncoder { s =>
-    self.encode(f(s))
+object SocketIOArgsDecoder {
+  def apply[T](decoder: Seq[Either[JsValue, ByteString]] => T): SocketIOArgsDecoder[T] = new SocketIOArgsDecoder[T] {
+    override def decodeArgs(args: Seq[Either[JsValue, ByteString]]) = decoder(args)
   }
 }
 
-object SocketIOAckEncoder {
+trait SocketIOArgDecoder[+T] extends SocketIOArgsDecoder[T] {
 
-  def apply[T](encoder: T => Seq[Either[JsValue, ByteString]]): SocketIOAckEncoder[T] = new SocketIOAckEncoder[T] {
-    override def encode(t: T) = encoder(t)
+  override def apply(event: SocketIOEvent): T = {
+    decodeArgs(event.arguments)
   }
 
-  def json[T: Writes]: SocketIOAckEncoder[T] = SocketIOAckEncoder { t: T =>
-    Seq(Left(Json.toJson(t)))
+  override def decodeArgs(args: Seq[Either[JsValue, ByteString]]): T = {
+    decodeArg(args.headOption.getOrElse {
+      throw new SocketIOEventCodecException("No arguments found to decode")
+    })
+  }
+
+  def decodeArg(arg: Either[JsValue, ByteString]): T
+}
+
+object SocketIOArgDecoder {
+
+  def apply[T](decode: Either[JsValue, ByteString] => T): SocketIOArgDecoder[T] = new SocketIOArgDecoder[T] {
+    override def decodeArg(arg: Either[JsValue, ByteString]) = decode(arg)
+  }
+
+  def json[T: Reads]: SocketIOArgDecoder[T] = apply {
+    case Left(jsValue) => jsValue.as[T]
+    case Right(bytes) => Json.parse(bytes.toArray).as[T]
+  }
+}
+
+trait SocketIOArgsEncoder[-T] extends SocketIOEventCodec.SocketIOEventEncoder[T] {
+  def encodeArgs(t: T): Seq[Either[JsValue, ByteString]]
+
+  override def apply(t: T) = SocketIOEvent.unnamed(encodeArgs(t), None)
+}
+
+object SocketIOArgsEncoder {
+  def apply[T](encode: T => Seq[Either[JsValue, ByteString]]): SocketIOArgsEncoder[T] = new SocketIOArgsEncoder[T] {
+    override def encodeArgs(t: T) = encode(t)
+  }
+}
+
+trait SocketIOArgEncoder[-T] extends SocketIOArgsEncoder[T] {
+  override def encodeArgs(t: T) = Seq(encodeArg(t))
+  def encodeArg(t: T): Either[JsValue, ByteString]
+}
+
+object SocketIOArgEncoder {
+
+  def apply[T](encoder: T => Either[JsValue, ByteString]): SocketIOArgEncoder[T] = new SocketIOArgEncoder[T] {
+    override def encodeArg(t: T) = encoder(t)
+  }
+
+  def json[T: Writes]: SocketIOArgEncoder[T] = apply { t =>
+    Left(Json.toJson(t))
   }
 }

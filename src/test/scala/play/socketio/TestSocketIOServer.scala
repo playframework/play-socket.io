@@ -11,6 +11,7 @@ import play.api.libs.json.JsString
 import play.api.mvc.EssentialAction
 import play.api.routing.sird._
 import play.api.routing.Router
+import play.socketio.SocketIOEventCodec.{SocketIOEventsDecoder, SocketIOEventsEncoder}
 
 import scala.concurrent.ExecutionContext
 
@@ -57,8 +58,8 @@ object TestSocketIOServer {
 
   class TestEngine(socketIO: SocketIO)(implicit materializer: Materializer, ec: ExecutionContext) {
 
-    val decoder = SocketIOEventDecoder.raw
-    val encoder = SocketIOEventEncoder.raw
+    val decoder: SocketIOEventsDecoder[SocketIOEvent] = { case e => e }
+    val encoder: SocketIOEventsEncoder[SocketIOEvent] = { case e => e }
 
     val (testDisconnectQueue, testDisconnectFlow) = {
       val (sourceQueue, source) = Source.queue[SocketIOEvent](10, OverflowStrategy.backpressure).toMat(BroadcastHub.sink)(Keep.both).run

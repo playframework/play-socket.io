@@ -1,13 +1,13 @@
 package play.socketio
 
 import akka.NotUsed
-import akka.actor.ActorRef
 import akka.stream.Materializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import play.api.libs.json.{JsString, JsValue}
 import play.api.mvc.RequestHeader
 import play.api.{Configuration, Logger}
 import play.engineio._
+import play.socketio.SocketIOEventCodec.{SocketIOEventsDecoder, SocketIOEventsEncoder}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
@@ -124,7 +124,7 @@ final class SocketIO(config: SocketIOConfig, engineIO: EngineIO)(implicit ec: Ex
       * @param encoder the encoder to use.
       * @param flow the flow.
       */
-    def defaultNamespace[In, Out](decoder: SocketIOEventDecoder[In], encoder: SocketIOEventEncoder[Out], flow: Flow[In, Out, _]): SocketIOBuilder[SessionData] = {
+    def defaultNamespace[In, Out](decoder: SocketIOEventsDecoder[In], encoder: SocketIOEventsEncoder[Out], flow: Flow[In, Out, _]): SocketIOBuilder[SessionData] = {
       defaultNamespace(decoder, encoder)(_ => flow)
     }
 
@@ -137,7 +137,7 @@ final class SocketIO(config: SocketIOConfig, engineIO: EngineIO)(implicit ec: Ex
       * @param encoder the encoder to use.
       * @param callback a callback to create the flow given the session.
       */
-    def defaultNamespace[In, Out](decoder: SocketIOEventDecoder[In], encoder: SocketIOEventEncoder[Out])
+    def defaultNamespace[In, Out](decoder: SocketIOEventsDecoder[In], encoder: SocketIOEventsEncoder[Out])
       (callback: SocketIOSession[SessionData] => Flow[In, Out, _]): SocketIOBuilder[SessionData] = {
       new SocketIOBuilder(
         connectCallback,
@@ -155,7 +155,7 @@ final class SocketIO(config: SocketIOConfig, engineIO: EngineIO)(implicit ec: Ex
       * @param encoder The encoder to use to encode messages.
       * @param flow The flow to use for the namespace.
       */
-    def addNamespace[In, Out](name: String, decoder: SocketIOEventDecoder[In], encoder: SocketIOEventEncoder[Out], flow: Flow[In, Out, _]): SocketIOBuilder[SessionData] = {
+    def addNamespace[In, Out](name: String, decoder: SocketIOEventsDecoder[In], encoder: SocketIOEventsEncoder[Out], flow: Flow[In, Out, _]): SocketIOBuilder[SessionData] = {
       addNamespace(decoder, encoder) {
         case (_, `name`) => flow
       }
@@ -175,7 +175,7 @@ final class SocketIO(config: SocketIOConfig, engineIO: EngineIO)(implicit ec: Ex
       * @param encoder The encoder to use to encode messages.
       * @param callback A callback to match the namespace and create a flow accordingly.
       */
-    def addNamespace[In, Out](decoder: SocketIOEventDecoder[In], encoder: SocketIOEventEncoder[Out])
+    def addNamespace[In, Out](decoder: SocketIOEventsDecoder[In], encoder: SocketIOEventsEncoder[Out])
       (callback: PartialFunction[(SocketIOSession[SessionData], String), Flow[In, Out, _]]): SocketIOBuilder[SessionData] = {
 
       new SocketIOBuilder(
@@ -203,8 +203,8 @@ final class SocketIO(config: SocketIOConfig, engineIO: EngineIO)(implicit ec: Ex
       engineIO.createController(handler)
     }
 
-    private def createNamespace[In, Out](decoder: SocketIOEventDecoder[In], encoder: SocketIOEventEncoder[Out], flow: Flow[In, Out, _]): Flow[SocketIOEvent, SocketIOEvent, _] = {
-      Flow[SocketIOEvent] map decoder.decode via flow map encoder.encode
+    private def createNamespace[In, Out](decoder: SocketIOEventsDecoder[In], encoder: SocketIOEventsEncoder[Out], flow: Flow[In, Out, _]): Flow[SocketIOEvent, SocketIOEvent, _] = {
+      Flow[SocketIOEvent] map decoder via flow map encoder
     }
   }
 }

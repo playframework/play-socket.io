@@ -107,8 +107,8 @@ final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErr
       // No sid, we're creating a new session
       case (None, _) =>
         val sid = UUID.randomUUID().toString
-        (engineIOManager ? Connect(sid, transport, request, requestId)).mapTo[EngineIOPacket].map { packet =>
-          Ok(packet)
+        (engineIOManager ? Connect(sid, transport, request, requestId)).mapTo[Packets].map { packets =>
+          Ok(EngineIOPayload(packets.packets))
         }
 
     }
@@ -125,11 +125,11 @@ final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErr
         // No sid, first we have to create a session, then we can start the flow, sending the open packet
         // as the first message.
         val sid = UUID.randomUUID().toString
-        (engineIOManager ? Connect(sid, transport, request, requestId)).mapTo[Utf8EngineIOPacket].map { openPacket =>
-          if (openPacket.typeId == EngineIOPacketType.Open) {
-            Right(webSocketFlow(sid, requestId).prepend(Source.single(openPacket)))
+        (engineIOManager ? Connect(sid, transport, request, requestId)).mapTo[Packets].map { packets =>
+          if (packets.packets.headOption.exists(_.typeId == EngineIOPacketType.Open)) {
+            Right(webSocketFlow(sid, requestId).prepend(Source.fromIterator(() => packets.packets.iterator)))
           } else {
-            Right(Flow.fromSinkAndSource(Sink.ignore, Source.single(openPacket)))
+            Right(Flow.fromSinkAndSource(Sink.ignore, Source.fromIterator(() => packets.packets.iterator)))
           }
         }
 

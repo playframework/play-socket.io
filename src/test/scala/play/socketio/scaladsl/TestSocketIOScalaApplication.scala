@@ -12,7 +12,9 @@ import play.socketio.{SocketIOEvent, TestSocketIOApplication, TestSocketIOServer
 
 import scala.concurrent.ExecutionContext
 
-object TestSocketIOScalaApplication extends TestSocketIOApplication {
+object TestSocketIOScalaApplication extends TestSocketIOScalaApplication(Map.empty)
+
+class TestSocketIOScalaApplication(initialSettings: Map[String, AnyRef]) extends TestSocketIOApplication {
 
   @annotation.varargs
   def main(args: String*) = {
@@ -21,7 +23,22 @@ object TestSocketIOScalaApplication extends TestSocketIOApplication {
 
   def createApplication(routerBuilder: (ExternalAssets, EngineIOController, ExecutionContext) => Router): Application = {
 
-    val components = new BuiltInComponentsFromContext(ApplicationLoader.createContext(Environment.simple()))
+    val components = createComponents(routerBuilder)
+
+    // eager init the application before logging that we've started
+    components.application
+
+    println("Started Scala application.")
+
+    components.application
+  }
+
+  def createComponents(routerBuilder: (ExternalAssets, EngineIOController, ExecutionContext) => Router): BuiltInComponents = {
+
+    val components = new BuiltInComponentsFromContext(ApplicationLoader.createContext(
+      Environment.simple(),
+      initialSettings = initialSettings
+    ))
       with SocketIOComponents
       with AssetsComponents {
 
@@ -31,12 +48,7 @@ object TestSocketIOScalaApplication extends TestSocketIOApplication {
       override lazy val router = routerBuilder(extAssets, createController(socketIO), executionContext)
       override def httpFilters = Nil
     }
-
-    components.application
-
-    println("Started Scala application.")
-
-    components.application
+    components
   }
 
   def createController(socketIO: SocketIO)(implicit mat: Materializer, ec: ExecutionContext) = {

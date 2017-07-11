@@ -48,6 +48,8 @@ lazy val root = (project in file("."))
       (runMain in Test).toTask(" play.socketio.javadsl.TestSocketIOJavaApplication").value,
     TaskKey[Unit]("runScalaServer") :=
       (runMain in Test).toTask(" play.socketio.scaladsl.TestSocketIOScalaApplication").value,
+    TaskKey[Unit]("runMultiNodeServer") :=
+      (runMain in Test).toTask(" play.socketio.scaladsl.TestMultiNodeSocketIOApplication").value,
 
     test in Test := {
       (test in Test).value

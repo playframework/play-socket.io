@@ -9,7 +9,7 @@ import java.util
 
 import play.api.{Environment, LoggerConfigurator}
 import play.socketio.javadsl.TestSocketIOJavaApplication
-import play.socketio.scaladsl.TestSocketIOScalaApplication
+import play.socketio.scaladsl.{TestMultiNodeSocketIOApplication, TestSocketIOScalaApplication}
 import play.utils.Colors
 
 import scala.collection.JavaConverters._
@@ -40,7 +40,8 @@ object RunSocketIOTests extends App {
   val passed = try {
 
     runTests("Scala support", TestSocketIOScalaApplication) &&
-      runTests("Java support", new TestSocketIOJavaApplication)
+      runTests("Java support", new TestSocketIOJavaApplication) &&
+      runTests("Multi-node support", TestMultiNodeSocketIOApplication)
 
   } finally {
     driver.quit()

@@ -42,12 +42,7 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
         )
 
       case Packets(sid, transport, packets, requestId, lastPacket) =>
-        p.Packets(sid, encodeTransport(transport), packets.map { packet =>
-          p.Packet(p.PacketType.fromValue(packet.typeId.id), packet match {
-            case Utf8EngineIOPacket(_, text) => p.Packet.Payload.Text(text)
-            case BinaryEngineIOPacket(_, bytes) => p.Packet.Payload.Binary(encodeBytes(bytes))
-          })
-        }, requestId, lastPacket)
+        p.Packets(sid, encodeTransport(transport), packets.map(encodePacket), requestId, lastPacket)
 
       case Retrieve(sid, transport, requestId) =>
         p.Retrieve(sid, encodeTransport(transport), requestId)
@@ -81,15 +76,8 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
 
     case `PacketsManifest` =>
       val packets = p.Packets.parseFrom(bytes)
-      Packets(packets.sid, decodeTransport(packets.transport), packets.packets.map { packet =>
-        val packetType = EngineIOPacketType.fromBinary(packet.packetType.productArity.toByte)
-        packet.payload.value match {
-          case p.Packet.Payload.Text(text) =>
-            Utf8EngineIOPacket(packetType, text)
-          case p.Packet.Payload.Binary(byteString) =>
-            BinaryEngineIOPacket(packetType, decodeBytes(byteString))
-        }
-      }, packets.requestId, packets.lastPacket)
+      Packets(packets.sid, decodeTransport(packets.transport), packets.packets.map(decodePacket),
+        packets.requestId, packets.lastPacket)
 
     case `RetrieveManifest` =>
       val retrieve = p.Retrieve.parseFrom(bytes)
@@ -132,5 +120,22 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
 
   private def decodeBytes(bytes: PByteString): AByteString = {
     AByteString.apply(bytes.asReadOnlyByteBuffer())
+  }
+
+  private def decodePacket(packet: p.Packet): EngineIOPacket = {
+    val packetType = EngineIOPacketType.fromBinary(packet.packetType.index.toByte)
+    packet.payload match {
+      case p.Packet.Payload.Text(text) =>
+        Utf8EngineIOPacket(packetType, text)
+      case p.Packet.Payload.Binary(byteString) =>
+        BinaryEngineIOPacket(packetType, decodeBytes(byteString))
+    }
+  }
+
+  private def encodePacket(packet: EngineIOPacket): p.Packet = {
+    p.Packet(p.PacketType.fromValue(packet.typeId.id), packet match {
+      case Utf8EngineIOPacket(_, text) => p.Packet.Payload.Text(text)
+      case BinaryEngineIOPacket(_, bytes) => p.Packet.Payload.Binary(encodeBytes(bytes))
+    })
   }
 }

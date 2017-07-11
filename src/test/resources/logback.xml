@@ -27,6 +27,10 @@
   <logger name="play" level="INFO" />
   <logger name="application" level="DEBUG" />
   <logger name="socketio" level="WARN" />
+  <logger name="akka" level="INFO" />
+
+  <!-- Uncomment to debug remote communication -->
+  <!-- <logger name="akka.remote" level="DEBUG" /> -->
 
   <!-- Off these ones as they are annoying, and anyway we manage configuration ourselves -->
   <logger name="com.avaje.ebean.config.PropertyMapLoader" level="OFF" />

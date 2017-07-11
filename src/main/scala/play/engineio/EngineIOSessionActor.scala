@@ -12,9 +12,9 @@ import play.engineio.protocol._
 import scala.util.control.NonFatal
 
 object EngineIOSessionActor {
-  case class Connected(flow: Flow[EngineIOMessage, Seq[EngineIOMessage], NotUsed])
+  case class Connected(flow: Flow[EngineIOMessage, Seq[EngineIOMessage], NotUsed], requestId: String)
   case class ConnectionRefused(e: Throwable)
-  case class PulledPackets(packets: Seq[EngineIOPacket])
+  case class PulledPackets(packets: Seq[EngineIOPacket]) extends DeadLetterSuppression
   case object Tick extends DeadLetterSuppression
   case object MessagesPushed
 
@@ -113,7 +113,7 @@ class EngineIOSessionActor[SessionData](
     case Connect(_, transport, request, requestId) =>
       debug(requestId, transport, "Received connect attempt for new session")
       activeTransport = transport
-      tryConnect(sid, request)
+      tryConnect(sid, request, requestId)
 
     case Close(_, transport, requestId) =>
       debug(requestId, transport, "Requested to close session")
@@ -126,10 +126,10 @@ class EngineIOSessionActor[SessionData](
       context.stop(self)
   }
 
-  def tryConnect(sid: String, request: RequestHeader) = {
+  def tryConnect(sid: String, request: RequestHeader, requestId: String) = {
     try {
       handler.onConnect(request, sid)
-        .map(flow => Connected(flow))
+        .map(flow => Connected(flow, requestId))
         .recover {
           case e => ConnectionRefused(e)
         }
@@ -144,11 +144,11 @@ class EngineIOSessionActor[SessionData](
     case Tick =>
       tick()
 
-    case Connected(flow) =>
+    case Connected(flow, requestId) =>
       log.debug("{} - Connection successful", sid)
-      sender ! EngineIOPacket(EngineIOPacketType.Open,
+      sender ! Packets(sid, activeTransport, Seq(EngineIOPacket(EngineIOPacketType.Open,
         EngineIOOpenMessage(sid, config.transports.filterNot(_ == activeTransport), pingInterval = config.pingInterval,
-          pingTimeout = config.pingTimeout))
+          pingTimeout = config.pingTimeout))), requestId)
 
       doConnect(flow)
 

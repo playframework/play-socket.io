@@ -76,7 +76,9 @@ object EngineIOPacketType {
   }
 }
 
-sealed trait EngineIOPacket {
+// We extend Serializable because that forces our own serializer to take preference over the serializable
+// serializer
+sealed trait EngineIOPacket extends Serializable {
   val typeId: EngineIOPacketType
   def packetEncodingName: String
 }

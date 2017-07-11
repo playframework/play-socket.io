@@ -60,33 +60,33 @@ lazy val root = (project in file("."))
     resolvers += "jitpack" at "https://jitpack.io"
   )
 
-lazy val chat = (project in file("samples/chat"))
+lazy val scalaChat = (project in file("samples/scala/chat"))
   .enablePlugins(PlayScala)
   .dependsOn(root)
   .settings(
-    name := "play-socket.io-chat-example",
+    name := "play-socket.io-scala-chat-example",
     organization := "com.lightbend.play",
     scalaVersion := "2.12.2",
 
     libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.3.0" % Provided
   )
 
-lazy val multiRoomChat = (project in file("samples/multi-room-chat"))
+lazy val scalaMultiRoomChat = (project in file("samples/scala/multi-room-chat"))
   .enablePlugins(PlayScala)
   .dependsOn(root)
   .settings(
-    name := "play-socket.io-multi-room-chat-example",
+    name := "play-socket.io-scala-multi-room-chat-example",
     organization := "com.lightbend.play",
     scalaVersion := "2.12.2",
 
     libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.3.0" % Provided
   )
 
-lazy val clusteredChat = (project in file("samples/clustered-chat"))
+lazy val scalaClusteredChat = (project in file("samples/scala/clustered-chat"))
   .enablePlugins(PlayScala)
   .dependsOn(root)
   .settings(
-    name := "play-socket.io-clustered-chat-example",
+    name := "play-socket.io-scala-clustered-chat-example",
     organization := "com.lightbend.play",
     scalaVersion := "2.12.2",
 

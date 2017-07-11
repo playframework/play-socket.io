@@ -6,7 +6,7 @@ import com.softwaremill.macwire._
 import controllers.AssetsComponents
 import play.api.inject.DefaultApplicationLifecycle
 import play.engineio.{EngineIOComponents, EngineIOController}
-import play.socketio.SocketIOComponents
+import play.socketio.scaladsl.SocketIOComponents
 
 class MyApplicationLoader extends ApplicationLoader {
   override def load(context: ApplicationLoader.Context) =

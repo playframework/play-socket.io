@@ -6,7 +6,7 @@ import akka.stream.scaladsl.{BroadcastHub, Flow, Keep, MergeHub, Sink, Source}
 import play.api.libs.json.{Format, Json}
 import play.engineio.EngineIOController
 import play.api.libs.functional.syntax._
-import play.socketio.SocketIO
+import play.socketio.scaladsl.SocketIO
 
 import scala.collection.concurrent.TrieMap
 
@@ -41,7 +41,7 @@ object ChatProtocol {
     implicit val format: Format[User] = implicitly[Format[String]].inmap(User.apply, _.name)
   }
 
-  import play.socketio.SocketIOEventCodec._
+  import play.socketio.scaladsl.SocketIOEventCodec._
 
   val decoder = decodeByName {
     case "chat message" => decodeJson[ChatMessage]

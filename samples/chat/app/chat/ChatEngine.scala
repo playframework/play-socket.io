@@ -5,14 +5,14 @@ import akka.stream.scaladsl.{BroadcastHub, Flow, Keep, MergeHub}
 import play.api.libs.json.Format
 import play.engineio.EngineIOController
 import play.api.libs.functional.syntax._
-import play.socketio.SocketIO
+import play.socketio.scaladsl.SocketIO
 
 /**
   * A simple chat engine.
   */
 class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
 
-  import play.socketio.SocketIOEventCodec._
+  import play.socketio.scaladsl.SocketIOEventCodec._
 
   // This will decode String "chat message" events coming in
   val decoder = decodeByName {

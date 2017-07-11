@@ -1,37 +1,24 @@
-package play.socketio
+package play.socketio.scaladsl
+
+import javax.inject.Inject
 
 import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import play.api.libs.json.{JsString, JsValue}
 import play.api.mvc.RequestHeader
-import play.api.{Configuration, Logger}
+import play.api.{Configuration, Environment, Logger}
 import play.engineio._
-import play.socketio.SocketIOEventCodec.{SocketIOEventsDecoder, SocketIOEventsEncoder}
+import SocketIOEventCodec.{SocketIOEventsDecoder, SocketIOEventsEncoder}
+import play.api.inject.Module
+import play.socketio._
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration._
-
-
-case class SocketIOConfig(
-  ackDeadline: FiniteDuration = 60.seconds,
-  ackCleanupEvery: Int = 10
-)
-
-object SocketIOConfig {
-  def fromConfiguration(configuration: Configuration) = {
-    val config = configuration.get[Configuration]("play.socket-io")
-    SocketIOConfig(
-      ackDeadline = config.get[FiniteDuration]("ack-deadline"),
-      ackCleanupEvery = config.get[Int]("ack-cleanup-every")
-    )
-  }
-}
 
 /**
   * The engine.io system. Allows you to create engine.io controllers for handling engine.io connections.
   */
-final class SocketIO(config: SocketIOConfig, engineIO: EngineIO)(implicit ec: ExecutionContext, mat: Materializer) {
+final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(implicit ec: ExecutionContext, mat: Materializer) {
 
   private val log = Logger(classOf[SocketIO])
 
@@ -210,7 +197,6 @@ final class SocketIO(config: SocketIOConfig, engineIO: EngineIO)(implicit ec: Ex
 }
 
 trait SocketIOComponents extends EngineIOComponents {
-
   lazy val socketIOConfig: SocketIOConfig = SocketIOConfig.fromConfiguration(configuration)
   lazy val socketIO: SocketIO = new SocketIO(socketIOConfig, engineIO)(executionContext, materializer)
 }

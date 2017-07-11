@@ -6,7 +6,7 @@ import play.api.libs.json.{JsString, JsValue}
 
 class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
 
-  import SocketIOEventCodec._
+  import play.socketio.scaladsl.SocketIOEventCodec._
 
   private class CapturingAck extends SocketIOEventAck {
     var args: Option[Seq[Either[JsValue, ByteString]]] = None

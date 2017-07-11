@@ -1,6 +1,7 @@
 package play.engineio
 
 import java.util.UUID
+import javax.inject.{Inject, Provider, Singleton}
 
 import akka.NotUsed
 import akka.pattern.ask
@@ -9,8 +10,9 @@ import akka.routing.FromConfig
 import akka.stream._
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.util.Timeout
-import play.api.{Configuration, Logger}
+import play.api.{Configuration, Environment, Logger}
 import play.api.http.HttpErrorHandler
+import play.api.inject.Module
 import play.api.mvc._
 import play.engineio.EngineIOManagerActor._
 import play.engineio.protocol._
@@ -43,6 +45,11 @@ object EngineIOConfig {
   }
 }
 
+@Singleton
+class EngineIOConfigProvider @Inject() (configuration: Configuration) extends Provider[EngineIOConfig] {
+  override lazy val get: EngineIOConfig = EngineIOConfig.fromConfiguration(configuration)
+}
+
 /**
   * An engine.io controller.
   *
@@ -59,7 +66,7 @@ object EngineIOConfig {
   * POST    /socket.io/        play.engineio.EngineIOController.endpoint(transport)
   * ```
   */
-class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErrorHandler, controllerComponents: ControllerComponents,
+final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErrorHandler, controllerComponents: ControllerComponents,
   actorSystem: ActorSystem, engineIOManager: ActorRef)(implicit ec: ExecutionContext) extends AbstractController(controllerComponents) {
 
   private val log = Logger(classOf[EngineIOController])
@@ -165,7 +172,8 @@ class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErrorHand
 /**
   * The engine.io system. Allows you to create engine.io controllers for handling engine.io connections.
   */
-final class EngineIO(config: EngineIOConfig, httpErrorHandler: HttpErrorHandler, controllerComponents: ControllerComponents,
+@Singleton
+final class EngineIO @Inject() (config: EngineIOConfig, httpErrorHandler: HttpErrorHandler, controllerComponents: ControllerComponents,
   actorSystem: ActorSystem)(implicit ec: ExecutionContext, mat: Materializer) {
 
   private val log = Logger(classOf[EngineIO])
@@ -218,4 +226,11 @@ trait EngineIOComponents {
   lazy val engineIOConfig: EngineIOConfig = EngineIOConfig.fromConfiguration(configuration)
   lazy val engineIO: EngineIO = new EngineIO(engineIOConfig, httpErrorHandler,
     controllerComponents, actorSystem)(executionContext, materializer)
+}
+
+class EngineIOModule extends Module {
+  override def bindings(environment: Environment, configuration: Configuration) = Seq(
+    bind[EngineIOConfig].toProvider[EngineIOConfigProvider],
+    bind[EngineIO].toSelf
+  )
 }

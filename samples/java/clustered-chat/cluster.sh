@@ -5,7 +5,7 @@ wd=$(pwd)
 
 startNode() {
   node=$1
-  target/universal/stage/bin/play-socket-io-scala-clustered-chat-example \
+  target/universal/stage/bin/play-socket-io-java-clustered-chat-example \
     -Dhttp.port=900$node -Dakka.remote.netty.tcp.port=255$node \
     -Dpidfile.path=$wd/target/node$node.pid \
     -Dnode.id=$1 \
@@ -33,7 +33,7 @@ case $1 in
         # Ensure the project is built
         (
             cd ../../..
-            sbt scalaClusteredChat/stage
+            sbt javaClusteredChat/stage
         )
 
         startNode 1

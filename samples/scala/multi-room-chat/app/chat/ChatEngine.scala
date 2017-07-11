@@ -61,15 +61,24 @@ class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
   import ChatProtocol._
 
   // All the chat rooms
-  private val chatRooms = TrieMap.empty[String, Flow[ChatEvent, ChatEvent, _]]
+  private val chatRooms = TrieMap.empty[String, (Sink[ChatEvent, NotUsed], Source[ChatEvent, NotUsed])]
 
   // This gets an existing chat room, or creates it if it doesn't exist
-  private def getChatRoom(room: String) = {
-    chatRooms.getOrElseUpdate(room, {
+  private def getChatRoom(user: User, room: String) = {
+    val (sink, source) = chatRooms.getOrElseUpdate(room, {
       // Each chat room is a merge hub merging messages into a broadcast hub.
-      val (sink, source) = MergeHub.source[ChatEvent].toMat(BroadcastHub.sink[ChatEvent])(Keep.both).run
-      Flow.fromSinkAndSource(sink, source)
+      MergeHub.source[ChatEvent].toMat(BroadcastHub.sink[ChatEvent])(Keep.both).run
     })
+
+    Flow.fromSinkAndSourceCoupled(
+      Flow[ChatEvent]
+        // Add the join and leave room events
+        .prepend(Source.single(JoinRoom(Some(user), room)))
+        .concat(Source.single(LeaveRoom(Some(user), room)))
+        .to(sink),
+      source
+    )
+
   }
 
   // Creates a chat flow for a user session
@@ -80,39 +89,31 @@ class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
     var broadcastSource: Source[ChatEvent, NotUsed] = null
     var mergeSink: Sink[ChatEvent, NotUsed] = null
 
-    Flow[ChatEvent] collect Function.unlift {
-      case JoinRoom(_, room) =>
-        val roomFlow = getChatRoom(room)
+    Flow[ChatEvent] map {
+      case event @ JoinRoom(_, room) =>
+        val roomFlow = getChatRoom(user, room)
 
         // Add the room to our flow
         broadcastSource
           // Ensure only messages for this room get there
-          .filter(_.room == room)
+          // Also filter out JoinRoom messages, since there's a race condition as to whether it will
+          // actually get here or not, so the room flow explicitly adds it.
+          .filter(e => e.room == room && !e.isInstanceOf[JoinRoom])
           // Take until we get a leave room message.
           .takeWhile(!_.isInstanceOf[LeaveRoom])
-          // We ensure that a join room message is sent first, and a leave room message is sent when we disconnect.
-          // The reason we filter the previous LeaveRoom message out, and add one here, is so that when an unclean
-          // disconnect happens (disconnect without sending leave room first), we always still send a leave room.
-          .prepend(Source.single(JoinRoom(Some(user), room)))
-          .concat(Source.single(LeaveRoom(Some(user), room)))
           // And send it through the room flow
           .via(roomFlow)
-          // And now we want to cancel this end of the flow when we see the leave room message for us.
-          .takeWhile({
-            case LeaveRoom(Some(`user`), `room`) => false
-            case _ => true
-          }, inclusive = true)
+          // Re-add the leave room here, since it was filtered out before and we want to see it ourselves
+          .concat(Source.single(LeaveRoom(Some(user), room)))
+          // And feed to the merge sink
           .runWith(mergeSink)
 
-        // And ignore the original JoinRoom message, we've already ensured it gets prepended to our flow of messages
-        // into the room
-        None
-
-      case LeaveRoom(_, room) =>
-        Some(LeaveRoom(Some(user), room))
+        event
 
       case ChatMessage(_, room, message) =>
-        Some(ChatMessage(Some(user), room, message))
+        ChatMessage(Some(user), room, message)
+
+      case other => other
 
     } via {
       Flow.fromSinkAndSourceCoupledMat(BroadcastHub.sink[ChatEvent], MergeHub.source[ChatEvent]) { (source, sink) =>

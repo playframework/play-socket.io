@@ -96,3 +96,45 @@ lazy val scalaClusteredChat = (project in file("samples/scala/clustered-chat"))
       "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
     )
   )
+
+lazy val javaChat = (project in file("samples/java/chat"))
+  .enablePlugins(PlayJava)
+  .dependsOn(root)
+  .settings(
+    name := "play-socket.io-java-chat-example",
+    organization := "com.lightbend.play",
+    scalaVersion := "2.12.2",
+
+    libraryDependencies += guice
+  )
+
+lazy val javaMultiRoomChat = (project in file("samples/java/multi-room-chat"))
+  .enablePlugins(PlayJava)
+  .dependsOn(root)
+  .settings(
+    name := "play-socket.io-java-multi-room-chat-example",
+    organization := "com.lightbend.play",
+    scalaVersion := "2.12.2",
+
+    libraryDependencies ++= Seq(
+      guice,
+      "org.projectlombok" % "lombok" % "1.16.16"
+    )
+  )
+
+lazy val javaClusteredChat = (project in file("samples/java/clustered-chat"))
+  .enablePlugins(PlayJava)
+  .dependsOn(root)
+  .settings(
+    name := "play-socket.io-java-clustered-chat-example",
+    organization := "com.lightbend.play",
+    scalaVersion := "2.12.2",
+
+    libraryDependencies ++= Seq(
+      guice,
+      "org.projectlombok" % "lombok" % "1.16.16",
+      "com.typesafe.akka" %% "akka-cluster" % AkkaVersion,
+      "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
+    )
+  )
+

@@ -1,0 +1,6 @@
+
+GET     /                   controllers.Assets.at(path = "/public", file = "index.html")
+GET     /assets/*file       controllers.Assets.at(path = "/public", file)
+
+GET     /socket.io/         play.engineio.EngineIOController.endpoint(transport)
+POST    /socket.io/         play.engineio.EngineIOController.endpoint(transport)

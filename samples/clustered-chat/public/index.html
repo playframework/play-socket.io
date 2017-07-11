@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+<head>
+  <title>Socket.IO chat</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font: 13px Helvetica, Arial; }
+    .chatForm { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+    .chatForm #roomPrompt { background: lightblue; border: 0; padding: 10px; width: 9%; margin-right: .5%; }
+    .chatForm input { border: 0; padding: 10px; width: 80%; margin-right: .5%; }
+    .chatForm button { width: 9%; background: lightblue; border: none; padding: 10px; }
+    #messages { list-style-type: none; margin: 0; padding: 0; }
+    #messages li { padding: 5px 10px; }
+    #messages li:nth-child(odd) { background: #eee; }
+    #messages { margin-bottom: 40px; }
+    #messages .room { font-weight: bold; display: inline-block; min-width: 10%; }
+    #messages .room::before { content: "[#"; }
+    #messages .room::after { content: "]"; }
+    #messages .event { font-style: italic; display: inline-block; }
+    #messages .user { font-weight: bold; display: inline-block; padding-right: 5px; }
+    #messages .user::after { content: ":"; }
+    #messages .message { display: inline-block; }
+    #rooms { list-style-type: none; margin: 0; padding: 0; }
+    #rooms li { padding: 5px 10px; display: block; line-height: 1.5 }
+    #rooms .room { display: inline-block; }
+    #rooms .leave { float: right; }
+    #rooms .active { background-color: lightblue }
+    #left { width: 75%; float: left; }
+    #right { float: right; width: 20%; padding: 10px; }
+    #roomPrompt { display: inline-block; font-weight: bold; }
+  </style>
+</head>
+<body>
+<div id="left">
+  <ul id="messages"></ul>
+  <form class="chatForm" action="">
+    <div id="roomPrompt">&nbsp;</div>
+    <input id="m" autocomplete="off"/>
+    <button>Send</button>
+  </form>
+</div>
+<div id="right">
+  <h3>Rooms</h3>
+  <form class="roomForm" action="">
+    <input id="joinRoom" autocomplete="off"/>
+    <button>Join Room</button>
+  </form>
+  <ul id="rooms"></ul>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script>
+  $(function () {
+
+    var user = prompt("Please enter your name", "A User");
+    var currentRoom = "";
+
+    var socket = io("/chat", {
+      query: "user=" + encodeURI(user)
+    });
+
+    socket.on("chat message", function (msg) {
+      render(msg.room, msg.user, msg.message);
+    });
+
+    socket.on("join room", function (msg) {
+      var u = msg.user;
+      if (u === user) {
+        u = "You";
+        var li = $("<li>")
+          .attr("data-room", msg.room)
+          .append($("<div>").addClass("room").text(msg.room));
+
+        var leave = $("<button>").addClass("leave").text("Leave");
+        leave.click(function () {
+          socket.emit("leave room", {room: msg.room});
+          return false;
+        });
+
+        li.click(function () {
+          setActiveRoom(li, msg.room);
+          return false;
+        });
+
+        setActiveRoom(li, msg.room);
+
+        li.append(leave);
+        $("#rooms").append(li);
+      }
+      render(msg.room, u + " joined the room.");
+    });
+
+    socket.on("leave room", function (msg) {
+      var u = msg.user;
+      if (u === user) {
+        u = "You";
+        var room = $('*[data-room="' + msg.room + '"]');
+        if (room.hasClass("active")) {
+          unsetActiveRoom();
+        }
+        room.remove();
+      }
+      render(msg.room, u + " left the room.");
+    });
+
+    $(".chatForm").submit(function () {
+      var message = $("#m");
+      socket.emit("chat message", {
+        user: user,
+        room: currentRoom,
+        message: message.val()
+      });
+      message.val("");
+      return false;
+    });
+
+    $(".roomForm").submit(function () {
+      console.log("join room")
+      var room = $("#joinRoom");
+      socket.emit("join room", {room: room.val()});
+      room.val("");
+      return false;
+    });
+
+    function render(room, user, message) {
+      var li = $("<li>").append($("<div>").addClass("room").text(room));
+      if (message) {
+        li.append($("<div>").addClass("user").text(user));
+        li.append($("<div>").addClass("message").text(message));
+      } else {
+        li.append($("<div>").addClass("event").text(user));
+      }
+      $("#messages").append(li);
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function setActiveRoom(element, room) {
+      $("#rooms").find(".active").removeClass("active");
+      element.addClass("active");
+      $("#roomPrompt").text(room);
+      currentRoom = room;
+    }
+
+    function unsetActiveRoom() {
+      $("#rooms").find(".active").removeClass("active");
+      currentRoom = "";
+      $("#roomPrompt").html("&nbsp;");
+    }
+
+  });
+</script>
+</body>
+</html>

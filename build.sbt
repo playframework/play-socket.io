@@ -1,6 +1,7 @@
 version in ThisBuild := "1.0-SNAPSHOT"
 
 import play.core.PlayVersion.{current => playVersion}
+val AkkaVersion = "2.5.3"
 
 lazy val runPhantomjs = taskKey[Unit]("Run the phantomjs tests")
 
@@ -14,7 +15,7 @@ lazy val root = (project in file("."))
     libraryDependencies ++= Seq(
       // Production dependencies
       "com.typesafe.play" %% "play" % playVersion,
-      "com.typesafe.akka" %% "akka-remote" % "2.5.3",
+      "com.typesafe.akka" %% "akka-remote" % AkkaVersion,
 
       // Test dependencies for running a Play server
       "com.typesafe.play" %% "play-akka-http-server" % playVersion % Test,
@@ -79,4 +80,19 @@ lazy val multiRoomChat = (project in file("samples/multi-room-chat"))
     scalaVersion := "2.12.2",
 
     libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.3.0" % Provided
+  )
+
+lazy val clusteredChat = (project in file("samples/clustered-chat"))
+  .enablePlugins(PlayScala)
+  .dependsOn(root)
+  .settings(
+    name := "play-socket.io-clustered-chat-example",
+    organization := "com.lightbend.play",
+    scalaVersion := "2.12.2",
+
+    libraryDependencies ++= Seq(
+      "com.softwaremill.macwire" %% "macros" % "2.3.0" % Provided,
+      "com.typesafe.akka" %% "akka-cluster" % AkkaVersion,
+      "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
+    )
   )

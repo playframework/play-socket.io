@@ -92,12 +92,16 @@ final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErr
     (maybeSid, request.body) match {
       // sid and payload, we're posting packets
       case (Some(sid), Some(payload)) =>
+        log.debug(s"Received push request for $sid")
+
         (engineIOManager ? Packets(sid, transport, payload.packets, requestId)).map { _ =>
           Ok("ok")
         }
 
       // sid no payload, we're retrieving packets
       case (Some(sid), None) =>
+        log.debug(s"Received poll request for $sid")
+
         (engineIOManager ? Retrieve(sid, transport, requestId)).map {
           case Close(_, _, _) => Ok(EngineIOPacket(EngineIOPacketType.Close))
           case Packets(_, _, Nil, _, _) => Ok(EngineIOPacket(EngineIOPacketType.Noop))
@@ -107,6 +111,9 @@ final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErr
       // No sid, we're creating a new session
       case (None, _) =>
         val sid = UUID.randomUUID().toString
+
+        log.debug(s"Received new connection for $sid")
+
         (engineIOManager ? Connect(sid, transport, request, requestId)).mapTo[Packets].map { packets =>
           Ok(EngineIOPayload(packets.packets))
         }
@@ -140,6 +147,8 @@ final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErr
 
   private def webSocketFlow(sid: String, requestId: String): Flow[EngineIOPacket, EngineIOPacket, _] = {
     val transport = EngineIOTransport.WebSocket
+
+    log.debug(s"Received WebSocket request for $sid")
 
     val in = Flow[EngineIOPacket].batch(4, Vector(_))(_ :+ _).mapAsync(1) { packets =>
       engineIOManager ? Packets(sid, transport, packets, requestId)

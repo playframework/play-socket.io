@@ -26,7 +26,6 @@
 
   <logger name="play" level="INFO" />
   <logger name="application" level="DEBUG" />
-  <logger name="socketio" level="WARN" />
   <logger name="akka" level="INFO" />
 
   <!-- Uncomment to debug remote communication -->

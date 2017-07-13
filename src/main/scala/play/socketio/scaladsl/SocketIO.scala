@@ -196,6 +196,11 @@ final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(impl
   }
 }
 
+/**
+  * Provides socket.io components
+  *
+  * Mix this trait into your application cake to get an instance of [[SocketIO]] to build your socket.io engine with.
+  */
 trait SocketIOComponents extends EngineIOComponents {
   lazy val socketIOConfig: SocketIOConfig = SocketIOConfig.fromConfiguration(configuration)
   lazy val socketIO: SocketIO = new SocketIO(socketIOConfig, engineIO)(executionContext, materializer)

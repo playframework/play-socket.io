@@ -7,8 +7,11 @@ import play.engineio.{BinaryEngineIOMessage, EngineIOMessage, TextEngineIOMessag
 
 import scala.collection.immutable
 
-
+/**
+  * A socket.io packet type.
+  */
 sealed abstract class SocketIOPacketType private (val id: Int) {
+  // Encode the packet as a char.
   val asChar = id.toString.head
 }
 
@@ -33,6 +36,9 @@ object SocketIOPacketType {
   }
 }
 
+/**
+  * A socket.io packet.
+  */
 sealed trait SocketIOPacket {
   def packetType: SocketIOPacketType
   val namespace: Option[String]
@@ -264,5 +270,9 @@ object SocketIOPacket {
   }
 }
 
+/**
+  * Exception thrown when there was a problem encoding or decoding a socket.io packet from the underlying engine.io
+  * packets.
+  */
 case class SocketIOEncodingException(packet: String, message: String, cause: Exception = null)
   extends RuntimeException(s"Error decoding socket IO packet '${packet.take(80)}${if (packet.length > 80) "..." else ""}': $message", cause)

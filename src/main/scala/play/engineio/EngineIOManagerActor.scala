@@ -6,18 +6,55 @@ import akka.routing.ConsistentHashingRouter.ConsistentHashable
 import play.api.mvc.RequestHeader
 import play.engineio.protocol.{EngineIOPacket, EngineIOTransport}
 
+/**
+  * The actor responsible for managing all engine.io sessions for this node.
+  *
+  * The messages sent to/from this actor potentially go through Akka remoting, and so must have serializers configured
+  * accordingly.
+  */
 object EngineIOManagerActor {
+
+  /**
+    * Parent type for all messages sent to the actor, implements consistent hashable so that it can be used with a
+    * consistent hashing router, particularly useful in a cluster scenario.
+    */
   sealed trait SessionMessage extends ConsistentHashable {
+    /**
+      * The session id.
+      */
     val sid: String
+
+    /**
+      * The transport this message came from.
+      */
     val transport: EngineIOTransport
+
+    /**
+      * The id of the request that this message came from.
+      */
     val requestId: String
+
     override def consistentHashKey = sid
   }
 
+  /**
+    * Connect a session. Sent to initiate a new session.
+    */
   case class Connect(sid: String, transport: EngineIOTransport, request: RequestHeader, requestId: String) extends SessionMessage
-  case class Packets(sid: String, transport: EngineIOTransport, packets: Seq[EngineIOPacket], requestId: String,
-    lastPacket: Boolean = false) extends SessionMessage
+
+  /**
+    * Push packets into the session.
+    */
+  case class Packets(sid: String, transport: EngineIOTransport, packets: Seq[EngineIOPacket], requestId: String) extends SessionMessage
+
+  /**
+    * Retrieve packets from the session.
+    */
   case class Retrieve(sid: String, transport: EngineIOTransport, requestId: String) extends SessionMessage
+
+  /**
+    * Close the session/connection.
+    */
   case class Close(sid: String, transport: EngineIOTransport, requestId: String) extends SessionMessage
 
   def props(config: EngineIOConfig, sessionProps: Props) = Props {
@@ -25,6 +62,9 @@ object EngineIOManagerActor {
   }
 }
 
+/**
+  * The actor responsible for managing all engine.io sessions for this node.
+  */
 class EngineIOManagerActor(config: EngineIOConfig, sessionProps: Props) extends Actor {
 
   import EngineIOManagerActor._

@@ -12,14 +12,14 @@ import play.socketio.{SocketIOEvent, TestSocketIOApplication, TestSocketIOServer
 
 import scala.concurrent.ExecutionContext
 
-object TestSocketIOScalaApplication extends TestSocketIOScalaApplication(Map.empty)
-
-class TestSocketIOScalaApplication(initialSettings: Map[String, AnyRef]) extends TestSocketIOApplication {
-
+object TestSocketIOScalaApplication extends TestSocketIOScalaApplication(Map.empty) {
   @annotation.varargs
   def main(args: String*) = {
     TestSocketIOServer.main(this)
   }
+}
+
+class TestSocketIOScalaApplication(initialSettings: Map[String, AnyRef]) extends TestSocketIOApplication {
 
   def createApplication(routerBuilder: (ExternalAssets, EngineIOController, ExecutionContext) => Router): Application = {
 

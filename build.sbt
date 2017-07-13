@@ -12,6 +12,10 @@ lazy val root = (project in file("."))
 
     scalaVersion := "2.12.2",
 
+    scalacOptions ++= Seq("-feature", "-Xfatal-warnings"),
+    scalacOptions in (Compile, doc) := Nil,
+    javacOptions ++= Seq("-Xlint"),
+
     libraryDependencies ++= Seq(
       // Production dependencies
       "com.typesafe.play" %% "play" % playVersion,

@@ -115,6 +115,7 @@ public final class SocketIO {
      * If you wish to reject the connection, you can throw an exception, which will later be handled by the error
      * handler to turn it into a message to send to the client.
      */
+    @SuppressWarnings("unchecked")
     public <S extends SessionData> SocketIOBuilder<S> onConnectAsync(
         BiFunction<Http.RequestHeader, String, CompletionStage<S>> callback
     ) {

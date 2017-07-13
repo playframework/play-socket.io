@@ -41,8 +41,8 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
           request.headers.headers.map(header => p.HttpHeader(header._1, header._2))
         )
 
-      case Packets(sid, transport, packets, requestId, lastPacket) =>
-        p.Packets(sid, encodeTransport(transport), packets.map(encodePacket), requestId, lastPacket)
+      case Packets(sid, transport, packets, requestId) =>
+        p.Packets(sid, encodeTransport(transport), packets.map(encodePacket), requestId)
 
       case Retrieve(sid, transport, requestId) =>
         p.Retrieve(sid, encodeTransport(transport), requestId)
@@ -77,7 +77,7 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
     case `PacketsManifest` =>
       val packets = p.Packets.parseFrom(bytes)
       Packets(packets.sid, decodeTransport(packets.transport), packets.packets.map(decodePacket),
-        packets.requestId, packets.lastPacket)
+        packets.requestId)
 
     case `RetrieveManifest` =>
       val retrieve = p.Retrieve.parseFrom(bytes)
@@ -129,6 +129,8 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
         Utf8EngineIOPacket(packetType, text)
       case p.Packet.Payload.Binary(byteString) =>
         BinaryEngineIOPacket(packetType, decodeBytes(byteString))
+      case p.Packet.Payload.Empty =>
+        throw new IllegalArgumentException("Empty payload")
     }
   }
 

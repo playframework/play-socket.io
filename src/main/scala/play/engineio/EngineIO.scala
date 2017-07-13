@@ -16,6 +16,7 @@ import play.api.inject.Module
 import play.api.mvc._
 import play.engineio.EngineIOManagerActor._
 import play.engineio.protocol._
+import play.socketio.scaladsl.SocketIO
 
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
@@ -104,8 +105,8 @@ final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErr
 
         (engineIOManager ? Retrieve(sid, transport, requestId)).map {
           case Close(_, _, _) => Ok(EngineIOPacket(EngineIOPacketType.Close))
-          case Packets(_, _, Nil, _, _) => Ok(EngineIOPacket(EngineIOPacketType.Noop))
-          case Packets(_, _, packets, _, _) => Ok(EngineIOPayload(packets))
+          case Packets(_, _, Nil, _) => Ok(EngineIOPacket(EngineIOPacketType.Noop))
+          case Packets(_, _, packets, _) => Ok(EngineIOPayload(packets))
         }
 
       // No sid, we're creating a new session
@@ -167,10 +168,8 @@ final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErr
           log.warn("Error on outgoing WebSocket", t)
       }
       asked
-    } takeWhile (!_.isInstanceOf[Close]) takeWhile( {
-      case Packets(_, _, _, _, lastPacket) => !lastPacket
-    }, inclusive = true) mapConcat {
-      case Packets(_, _, packets, _, _) => packets.to[immutable.Seq]
+    } takeWhile (!_.isInstanceOf[Close]) mapConcat {
+      case Packets(_, _, packets, _) => packets.to[immutable.Seq]
     }
 
     Flow.fromSinkAndSourceCoupled(in, out)
@@ -224,6 +223,11 @@ final class EngineIO @Inject() (config: EngineIOConfig, httpErrorHandler: HttpEr
   }
 }
 
+/**
+  * Provides engine.io components
+  *
+  * Mix this trait into your application cake to get an instance of [[EngineIO]] to build your engine.io engine with.
+  */
 trait EngineIOComponents {
   def httpErrorHandler: HttpErrorHandler
   def controllerComponents: ControllerComponents
@@ -237,6 +241,11 @@ trait EngineIOComponents {
     controllerComponents, actorSystem)(executionContext, materializer)
 }
 
+/**
+  * The engine.io module.
+  *
+  * Provides engine.io components to Play's runtime dependency injection implementation.
+  */
 class EngineIOModule extends Module {
   override def bindings(environment: Environment, configuration: Configuration) = Seq(
     bind[EngineIOConfig].toProvider[EngineIOConfigProvider],

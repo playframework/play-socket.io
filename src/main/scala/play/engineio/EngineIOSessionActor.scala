@@ -11,12 +11,37 @@ import play.engineio.protocol._
 
 import scala.util.control.NonFatal
 
+/**
+  * Actor that provides engine.io sessions.
+  *
+  * All the messages below are sent from this actor to itself.
+  */
 object EngineIOSessionActor {
+
+  /**
+    * The the result of the engine.io handler connect operation.
+    */
   case class Connected(flow: Flow[EngineIOMessage, Seq[EngineIOMessage], NotUsed], requestId: String)
+
+  /**
+    * Sent when the engine.io handler throws an exception.
+    */
   case class ConnectionRefused(e: Throwable)
+
+  /**
+    * The result of pulling from the sink queue.
+    */
   case class PulledPackets(packets: Seq[EngineIOPacket]) extends DeadLetterSuppression
-  case object Tick extends DeadLetterSuppression
+
+  /**
+    * Message sent when the source queue acknowledges that they've been sent.
+    */
   case object MessagesPushed
+
+  /**
+    * A tick.
+    */
+  case object Tick extends DeadLetterSuppression
 
   def props[SessionData](
     config: EngineIOConfig,
@@ -27,6 +52,9 @@ object EngineIOSessionActor {
   }
 }
 
+/**
+  * Actor that provides engine.io sessions.
+  */
 class EngineIOSessionActor[SessionData](
   config: EngineIOConfig,
   handler: EngineIOSessionHandler
@@ -251,7 +279,7 @@ class EngineIOSessionActor[SessionData](
           }
       }
 
-    case Packets(_, transport, packets, requestId, _) =>
+    case Packets(_, transport, packets, requestId) =>
       debug(requestId, transport, "Received {} incoming packets", packets.size)
       resetTimeout()
 

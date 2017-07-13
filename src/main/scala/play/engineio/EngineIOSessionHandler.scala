@@ -26,13 +26,29 @@ trait EngineIOSessionHandler {
 
 }
 
+/**
+  * Exception thrown when a session id is unknown.
+  *
+  * @param sid The unknown session id.
+  */
 case class UnknownSessionId(sid: String) extends RuntimeException("Unknown session id: " + sid, null, true, false)
+
+/**
+  * Exception thrown when a message is received for a session that is already closed.
+  */
 case object SessionClosed extends RuntimeException("Session closed", null, true, false)
 
 /**
-  * An engine io message, either binary or text.
+  * An engine.io message, either binary or text.
   */
 sealed trait EngineIOMessage
 
+/**
+  * A binary engine.io message.
+  */
 case class BinaryEngineIOMessage(bytes: ByteString) extends EngineIOMessage
+
+/**
+  * A text engine.io message.
+  */
 case class TextEngineIOMessage(text: String) extends EngineIOMessage

@@ -7,6 +7,8 @@ import javax.inject.{Inject, Provider, Singleton}
 
 /**
   * Configuration for socket.io.
+  *
+  * See `reference.conf` for in depth documentation.
   */
 case class SocketIOConfig(
   ackDeadline: FiniteDuration = 60.seconds,

@@ -77,7 +77,7 @@ object RunSocketIOTests extends App {
       driver.executeScript("return consumeMochaEvents();") match {
         case list: util.List[_] =>
           list.asScala.foreach {
-            case map: util.Map[String, _] =>
+            case map: util.Map[String, _] @unchecked =>
               val obj = map.asScala
               obj.get("name") match {
                 case Some("suite") =>

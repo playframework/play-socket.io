@@ -17,6 +17,9 @@ import play.api.mvc._
 
 import scala.concurrent.ExecutionContext
 
+/**
+  * The transport that received a request, either polling or WebSocket.
+  */
 sealed abstract class EngineIOTransport private (val name: String)
 
 object EngineIOTransport {
@@ -30,6 +33,9 @@ object EngineIOTransport {
   }
 }
 
+/**
+  * Open message, sent in response to an open request.
+  */
 case class EngineIOOpenMessage(sid: String, upgrades: Seq[EngineIOTransport], pingInterval: FiniteDuration, pingTimeout: FiniteDuration)
 
 object EngineIOOpenMessage {
@@ -48,6 +54,9 @@ object EngineIOOpenMessage {
   ).apply(o => (o.sid, o.upgrades, o.pingInterval, o.pingTimeout))
 }
 
+/**
+  * Engine IO packet type.
+  */
 sealed abstract class EngineIOPacketType private (val id: Int) {
   val asciiEncoded: String = id.toString
   val binaryEncoded: ByteString = ByteString(id)
@@ -76,9 +85,10 @@ object EngineIOPacketType {
   }
 }
 
-// We extend Serializable because that forces our own serializer to take preference over the serializable
-// serializer
-sealed trait EngineIOPacket extends Serializable {
+/**
+  * An engine.io packet, either UTF8 or binary.
+  */
+sealed trait EngineIOPacket {
   val typeId: EngineIOPacketType
   def packetEncodingName: String
 }
@@ -96,6 +106,11 @@ object EngineIOPacket {
     EngineIOPayload.writeable.map[EngineIOPacket](packet => EngineIOPayload(Seq(packet)))
   }
 
+  /**
+    * WebSocket transformer.
+    *
+    * Binary packets are mapped to binary messages, text packets to text messages.
+    */
   implicit def webSocketTransformer: MessageFlowTransformer[EngineIOPacket, EngineIOPacket] = new MessageFlowTransformer[EngineIOPacket, EngineIOPacket] {
     override def transform(flow: Flow[EngineIOPacket, EngineIOPacket, _]) = {
       Flow[Message] collect {
@@ -147,11 +162,20 @@ object Utf8EngineIOPacket {
   }
 }
 
+/**
+  * engine.io payload, used by polling clients for batching many packets together.
+  */
 case class EngineIOPayload(packets: Seq[EngineIOPacket])
 
 object EngineIOPayload {
   private val ParseInt = "(\\d+)".r
 
+  /**
+    * Writeable for writing payloads to the client.
+    *
+    * Inspects the request to find out how the client is expecting it to be encoded, for example, as binary, as text
+    * (encoding binary content to base64), or as jsonp.
+    */
   implicit def writeable(implicit request: RequestHeader): Writeable[EngineIOPayload] = {
     request.getQueryString("j") match {
       case Some(ParseInt(j)) =>
@@ -174,6 +198,11 @@ object EngineIOPayload {
     }
   }
 
+  /**
+    * Body parser for parsing engine.io request bodies.
+    *
+    * Can parse bodies as plain text, binary octets, or forms (forms are used by jsonp transport mode).
+    */
   def parser(parsers: PlayBodyParsers)(implicit ec: ExecutionContext): BodyParser[Option[EngineIOPayload]] = BodyParser { req =>
     if (req.method == "POST") {
       req.contentType match {
@@ -203,6 +232,9 @@ object EngineIOPayload {
   }
 }
 
+/**
+  * Binary encoding for engine.io payloads. Used by AHCv2 polling requests.
+  */
 object BinaryEngineIOPayloadEncoding {
 
   val StringPacketByte: Byte = 0
@@ -315,6 +347,9 @@ object BinaryEngineIOPayloadEncoding {
 
 }
 
+/**
+  * UTF8 encoding for engine.io payloads. Used by AHCv1 polling requests (when b64=true is sent).
+  */
 object Utf8EngineIOPayloadEncoding {
   def encode(payload: EngineIOPayload): String = {
     val builder = StringBuilder.newBuilder
@@ -407,4 +442,7 @@ object Utf8EngineIOPayloadEncoding {
   val PacketHeaderPattern = Pattern.compile("(\\d+):(b?)(\\d)")
 }
 
+/**
+  * Exception thrown when an error decoding or encoding engine.io packets is encountered.
+  */
 case class EngineIOEncodingException(msg: String) extends RuntimeException(msg)

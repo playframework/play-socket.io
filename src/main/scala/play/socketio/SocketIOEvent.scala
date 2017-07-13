@@ -39,6 +39,11 @@ case class SocketIOSession[+T](sid: String, data: T)
 case class SocketIOEvent(name: String, arguments: Seq[Either[JsValue, ByteString]], ack: Option[SocketIOEventAck])
 
 object SocketIOEvent {
+  /**
+    * Create an unnamed event.
+    *
+    * This is a convenient function for creating events with a name of `"<unnamed>"`.
+    */
   def unnamed(arguments: Seq[Either[JsValue, ByteString]], ack: Option[SocketIOEventAck]) =
     SocketIOEvent("<unnamed>", arguments, ack)
 }

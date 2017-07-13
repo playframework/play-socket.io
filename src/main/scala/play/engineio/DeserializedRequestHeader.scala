@@ -7,6 +7,13 @@ import play.api.mvc.{Headers, RequestHeader}
 import play.api.mvc.request.{RemoteConnection, RequestTarget}
 import play.core.parsers.FormUrlEncodedParser
 
+/**
+  * Implementation of Play's RequestHeader that is built from a set of deserialized values.
+  *
+  * This is provided so that the RequestHeader can be deserialized from a form sent using Akka remoting.
+  *
+  * Does not provide the full request functionality, but does provide all the raw information from the wire.
+  */
 private[engineio] class DeserializedRequestHeader(
   val method: String,
   rawUri: String,

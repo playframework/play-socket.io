@@ -8,7 +8,6 @@ import akka.util.ByteString;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.collect.ImmutableList;
 import play.api.libs.json.*;
 import play.libs.F;
@@ -18,6 +17,7 @@ import scala.Option;
 import scala.Some;
 import scala.collection.JavaConverters;
 import scala.collection.Seq;
+import scala.collection.immutable.List$;
 import scala.compat.java8.OptionConverters;
 import scala.runtime.BoxedUnit;
 import scala.util.Either;
@@ -90,6 +90,9 @@ public abstract class SocketIOEventCodec<In, Out> {
     return BidiFlow.fromFlows(decodeFlow, encodeFlow);
   }
 
+  /**
+   * Decode a single argument as JSON.
+   */
   protected <T> SingleArgumentDecoder<T> decodeJson(Class<T> clazz) {
     ObjectReader reader = objectMapper.readerFor(clazz);
     return arg -> {
@@ -109,10 +112,23 @@ public abstract class SocketIOEventCodec<In, Out> {
     };
   }
 
+  /**
+   * Decode a single argument as a binary message.
+   */
   protected SingleArgumentDecoder<ByteString> decodeBytes() {
     return arg -> arg.right().get();
   }
 
+  /**
+   * Decode no arguments.
+   */
+  protected MultiArgumentDecoder<NotUsed> decodeNoArgs() {
+    return args -> NotUsed.getInstance();
+  }
+
+  /**
+   * Encode a single argument as a JSON.
+   */
   protected <T> SingleArgumentEncoder<T> encodeJson() {
     return arg -> {
       JsonNode jsonNode = objectMapper.valueToTree(arg);
@@ -122,8 +138,18 @@ public abstract class SocketIOEventCodec<In, Out> {
     };
   }
 
+  /**
+   * Encode a single argument as a binary message.
+   */
   protected SingleArgumentEncoder<ByteString> encodeBytes() {
     return Right::apply;
+  }
+
+  /**
+   * Encode no arguments.
+   */
+  protected MultiArgumentEncoder<NotUsed> encodeNoArgs() {
+    return notUsed -> List$.MODULE$.empty();
   }
 
   protected interface EventDecoder<T> {

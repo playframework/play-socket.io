@@ -1,8 +1,9 @@
-package play.socketio
+package play.socketio.scaladsl
 
 import akka.util.ByteString
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import play.api.libs.json.{JsString, JsValue}
+import play.socketio.{SocketIOEvent, SocketIOEventAck}
 
 class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
 
@@ -22,7 +23,6 @@ class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
   }
 
   "The socket.io event codec DSL" should {
-
 
     "allow decoding single argument events" in {
       decodeStringArgs(decodeJson[String], Seq("one")) should ===("one")
@@ -161,6 +161,19 @@ class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
       val e2 = encoder(20)
       e2.name should ===("int")
       e2.arguments should ===(stringsToArgs("20"))
+    }
+
+    "allow mapping decoders" in {
+      val decoder = decodeJson[String] ~ decodeJson[String] andThen { case (a, b) => s"$a:$b" }
+      decodeStringArgs(decoder, Seq("one", "two")) should ===("one:two")
+    }
+
+    "allow composing encoders" in {
+      case class Args(a: String, b: String)
+      val encoder = encodeJson[String] ~ encodeJson[String] compose[Args] { case Args(a, b) => (a, b) }
+      // This assignment is purely to ensure that the Scala compiler correctly inferred the type of encoder
+      val checkTypeInference: SocketIOEventEncoder[Args] = encoder
+      checkTypeInference(Args("one", "two")).arguments should ===(stringsToArgs("one", "two"))
     }
   }
 

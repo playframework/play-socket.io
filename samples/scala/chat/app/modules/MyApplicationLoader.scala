@@ -5,7 +5,7 @@ import play.api.{ApplicationLoader, BuiltInComponents, BuiltInComponentsFromCont
 import com.softwaremill.macwire._
 import controllers.AssetsComponents
 import play.api.inject.DefaultApplicationLifecycle
-import play.engineio.{EngineIOComponents, EngineIOController}
+import play.engineio.EngineIOController
 import play.socketio.scaladsl.SocketIOComponents
 
 class MyApplicationLoader extends ApplicationLoader {

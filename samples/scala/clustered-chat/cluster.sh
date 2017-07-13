@@ -23,6 +23,7 @@ stopNode() {
     then
         kill $(cat $pidfile)
     fi
+    rm $pidfile
   fi
 }
 

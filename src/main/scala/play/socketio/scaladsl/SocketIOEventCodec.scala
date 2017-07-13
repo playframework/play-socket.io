@@ -1,5 +1,6 @@
 package play.socketio.scaladsl
 
+import akka.NotUsed
 import akka.util.ByteString
 import play.api.libs.json.{JsValue, Json, Reads, Writes}
 import play.socketio.{SocketIOEvent, SocketIOEventAck}
@@ -42,6 +43,19 @@ object SocketIOEventCodec {
   def decodeJson[T: Reads]: SocketIOArgDecoder[T] = SocketIOArgDecoder.json[T]
 
   /**
+    * Create a socket.io decoder that decodes a single argument as binary.
+    */
+  def decodeBytes: SocketIOArgDecoder[ByteString] = SocketIOArgDecoder {
+    case Left(_) => throw new SocketIOEventCodecException("Expected binary argument")
+    case Right(bytes) => bytes
+  }
+
+  /**
+    * Create a socket.io decoder that decodes no arguments.
+    */
+  def decodeNoArgs: SocketIOArgsDecoder[NotUsed] = SocketIOArgsDecoder(_ => NotUsed)
+
+  /**
     * Create a socket.io events encoder that encodes events by type.
     *
     * The function should return a tuple of the event name and the encoder to use for the event.
@@ -73,6 +87,16 @@ object SocketIOEventCodec {
     * Encode a single argument to JSON from the given type T.
     */
   def encodeJson[T: Writes]: SocketIOArgEncoder[T] = SocketIOArgEncoder.json[T]
+
+  /**
+    * Encode a single [[ByteString]] argument to binary.
+    */
+  def encodeBytes: SocketIOArgEncoder[ByteString] = SocketIOArgEncoder(Right(_))
+
+  /**
+    * Encode no arguments.
+    */
+  def encodeNoArgs: SocketIOArgsEncoder[NotUsed] = SocketIOArgsEncoder(_ => Nil)
 
   implicit class SocketIOSingleArgDecoderBuilder[T](first: SocketIOArgDecoder[T]) {
     def and[T1](second: SocketIOArgDecoder[T1]): SocketIOArgsDecoder[(T, T1)] = {

@@ -8,7 +8,7 @@ lazy val runPhantomjs = taskKey[Unit]("Run the phantomjs tests")
 lazy val root = (project in file("."))
   .settings(
     organization := "com.lightbend.play",
-    name := "play-socket.io",
+    name := "play-socket-io",
 
     scalaVersion := "2.12.2",
 

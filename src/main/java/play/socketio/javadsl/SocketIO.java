@@ -1,3 +1,6 @@
+/*
+ * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ */
 package play.socketio.javadsl;
 
 import akka.NotUsed;

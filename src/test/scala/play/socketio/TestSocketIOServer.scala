@@ -1,13 +1,16 @@
+/*
+ * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ */
 package play.socketio
 
-import play.core.server.{AkkaHttpServer, ServerConfig}
+import play.core.server.{ AkkaHttpServer, ServerConfig }
 import play.api.mvc.EssentialAction
 import play.api.routing.sird._
 import play.api.routing.Router
 
 /**
-  * Test server that can be
-  */
+ * Test server that can be
+ */
 object TestSocketIOServer {
 
   def start(testApplication: TestSocketIOApplication, config: ServerConfig = ServerConfig()): AkkaHttpServer = {
@@ -16,7 +19,7 @@ object TestSocketIOServer {
         def extAssets: String => EssentialAction = assets.at("src/test/javascript", _)
         implicit val ec = executionContext
         Router.from {
-          case GET(p"/socket.io/") ? q"transport=$transport" => controller.endpoint(transport)
+          case GET(p"/socket.io/") ? q"transport=$transport"  => controller.endpoint(transport)
           case POST(p"/socket.io/") ? q"transport=$transport" => controller.endpoint(transport)
           case GET(p"$path*") => EssentialAction { rh =>
             (if (path.endsWith("/")) {
@@ -26,8 +29,8 @@ object TestSocketIOServer {
             }).apply(rh).map(_.withHeaders("Cache-Control" -> "no-cache"))
           }
         }
-      }
-    , config)
+      }, config
+    )
   }
 
   def main(testApplication: TestSocketIOApplication) = {

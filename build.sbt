@@ -1,11 +1,14 @@
-version in ThisBuild := "1.0-SNAPSHOT"
-
+import com.typesafe.sbt.SbtScalariform.ScalariformKeys
+import de.heikoseeberger.sbtheader.HeaderPattern
 import play.core.PlayVersion.{current => playVersion}
 val AkkaVersion = "2.5.3"
 
 lazy val runPhantomjs = taskKey[Unit]("Run the phantomjs tests")
 
+playBuildRepoName in ThisBuild := "play-socket.io"
+
 lazy val root = (project in file("."))
+  .enablePlugins(PlayLibrary, AutomateHeaderPlugin)
   .settings(
     organization := "com.lightbend.play",
     name := "play-socket-io",
@@ -61,8 +64,37 @@ lazy val root = (project in file("."))
       runPhantomjs.value
     },
 
-    resolvers += "jitpack" at "https://jitpack.io"
+    resolvers += "jitpack" at "https://jitpack.io",
+
+    headers := headers.value ++ Map(
+      "scala" -> (
+        HeaderPattern.cStyleBlockComment,
+        """|/*
+           | * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+           | */
+           |""".stripMargin
+      ),
+      "java" -> (
+        HeaderPattern.cStyleBlockComment,
+        """|/*
+           | * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+           | */
+           |""".stripMargin
+      )
+    ),
+
+    ScalariformKeys.preferences in Compile  := formattingPreferences,
+    ScalariformKeys.preferences in Test     := formattingPreferences
   )
+
+def formattingPreferences = {
+  import scalariform.formatter.preferences._
+  FormattingPreferences()
+    .setPreference(RewriteArrowSymbols, false)
+    .setPreference(AlignParameters, true)
+    .setPreference(AlignSingleLineCaseStatements, true)
+    .setPreference(SpacesAroundMultiImports, true)
+}
 
 lazy val scalaChat = (project in file("samples/scala/chat"))
   .enablePlugins(PlayScala)

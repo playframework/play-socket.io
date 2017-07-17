@@ -1,15 +1,17 @@
+/*
+ * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ */
 package play.socketio
 
-
 import ch.racic.selenium.drivers.PhantomJSDriverHelper
-import org.openqa.selenium.phantomjs.{PhantomJSDriver, PhantomJSDriverService}
+import org.openqa.selenium.phantomjs.{ PhantomJSDriver, PhantomJSDriverService }
 import org.openqa.selenium.remote.DesiredCapabilities
 import play.core.server.ServerConfig
 import java.util
 
-import play.api.{Environment, LoggerConfigurator}
+import play.api.{ Environment, LoggerConfigurator }
 import play.socketio.javadsl.TestSocketIOJavaApplication
-import play.socketio.scaladsl.{TestMultiNodeSocketIOApplication, TestSocketIOScalaApplication}
+import play.socketio.scaladsl.{ TestMultiNodeSocketIOApplication, TestSocketIOScalaApplication }
 import play.utils.Colors
 
 import scala.collection.JavaConverters._
@@ -27,8 +29,10 @@ object RunSocketIOTests extends App {
 
   val capabilities = DesiredCapabilities.phantomjs()
 
-  capabilities.setCapability(PhantomJSDriverService.PHANTOMJS_EXECUTABLE_PATH_PROPERTY,
-    PhantomJSDriverHelper.executable64().getAbsolutePath)
+  capabilities.setCapability(
+    PhantomJSDriverService.PHANTOMJS_EXECUTABLE_PATH_PROPERTY,
+    PhantomJSDriverHelper.executable64().getAbsolutePath
+  )
   capabilities.setCapability(PhantomJSDriverService.PHANTOMJS_CLI_ARGS, Array("--webdriver-loglevel=WARN"))
 
   val driver = new PhantomJSDriver(capabilities)
@@ -120,6 +124,5 @@ object RunSocketIOTests extends App {
   } finally {
     close(closeable)
   }
-
 
 }

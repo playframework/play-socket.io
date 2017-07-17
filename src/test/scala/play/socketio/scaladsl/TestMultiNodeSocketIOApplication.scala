@@ -1,10 +1,13 @@
+/*
+ * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ */
 package play.socketio.scaladsl
 
 import controllers.ExternalAssets
 import play.api.inject.ApplicationLifecycle
 import play.api.routing.Router
 import play.engineio.EngineIOController
-import play.socketio.{TestSocketIOApplication, TestSocketIOServer}
+import play.socketio.{ TestSocketIOApplication, TestSocketIOServer }
 
 import scala.concurrent.ExecutionContext
 import scala.collection.JavaConverters._

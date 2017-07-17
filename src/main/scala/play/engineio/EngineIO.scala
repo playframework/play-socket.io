@@ -1,16 +1,19 @@
+/*
+ * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ */
 package play.engineio
 
 import java.util.UUID
-import javax.inject.{Inject, Provider, Singleton}
+import javax.inject.{ Inject, Provider, Singleton }
 
 import akka.NotUsed
 import akka.pattern.ask
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ ActorRef, ActorSystem }
 import akka.routing.FromConfig
 import akka.stream._
-import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.stream.scaladsl.{ Flow, Sink, Source }
 import akka.util.Timeout
-import play.api.{Configuration, Environment, Logger}
+import play.api.{ Configuration, Environment, Logger }
 import play.api.http.HttpErrorHandler
 import play.api.inject.Module
 import play.api.mvc._
@@ -19,17 +22,17 @@ import play.engineio.protocol._
 import play.socketio.scaladsl.SocketIO
 
 import scala.collection.immutable
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
+import scala.util.{ Failure, Success }
 
 case class EngineIOConfig(
-  pingInterval: FiniteDuration = 25.seconds,
-  pingTimeout: FiniteDuration = 60.seconds,
-  transports: Seq[EngineIOTransport] = Seq(EngineIOTransport.WebSocket, EngineIOTransport.Polling),
-  actorName: String = "engine.io",
-  routerName: Option[String] = None,
-  useRole: Option[String] = None
+  pingInterval: FiniteDuration         = 25.seconds,
+  pingTimeout:  FiniteDuration         = 60.seconds,
+  transports:   Seq[EngineIOTransport] = Seq(EngineIOTransport.WebSocket, EngineIOTransport.Polling),
+  actorName:    String                 = "engine.io",
+  routerName:   Option[String]         = None,
+  useRole:      Option[String]         = None
 )
 
 object EngineIOConfig {
@@ -52,35 +55,35 @@ class EngineIOConfigProvider @Inject() (configuration: Configuration) extends Pr
 }
 
 /**
-  * An engine.io controller.
-  *
-  * This provides one handler, the [[endpoint()]] method. This should be routed to for all `GET` and `POST` requests for
-  * anything on the path for engine.io (for socket.io, this defaults to `/socket.io/` unless configured otherwise on
-  * the client.
-  *
-  * The `transport` parameter should be extracted from the `transport` query parameter with the request.
-  *
-  * For example:
-  *
-  * ```
-  * GET     /socket.io/        play.engineio.EngineIOController.endpoint(transport)
-  * POST    /socket.io/        play.engineio.EngineIOController.endpoint(transport)
-  * ```
-  */
+ * An engine.io controller.
+ *
+ * This provides one handler, the [[endpoint()]] method. This should be routed to for all `GET` and `POST` requests for
+ * anything on the path for engine.io (for socket.io, this defaults to `/socket.io/` unless configured otherwise on
+ * the client.
+ *
+ * The `transport` parameter should be extracted from the `transport` query parameter with the request.
+ *
+ * For example:
+ *
+ * ```
+ * GET     /socket.io/        play.engineio.EngineIOController.endpoint(transport)
+ * POST    /socket.io/        play.engineio.EngineIOController.endpoint(transport)
+ * ```
+ */
 final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErrorHandler, controllerComponents: ControllerComponents,
-  actorSystem: ActorSystem, engineIOManager: ActorRef)(implicit ec: ExecutionContext) extends AbstractController(controllerComponents) {
+                               actorSystem: ActorSystem, engineIOManager: ActorRef)(implicit ec: ExecutionContext) extends AbstractController(controllerComponents) {
 
   private val log = Logger(classOf[EngineIOController])
   private implicit val timeout = Timeout(config.pingTimeout)
 
   /**
-    * The endpoint to route to from a router.
-    *
-    * @param transport The transport to use.
-    */
+   * The endpoint to route to from a router.
+   *
+   * @param transport The transport to use.
+   */
   def endpoint(transport: String): Handler = {
     EngineIOTransport.fromName(transport) match {
-      case EngineIOTransport.Polling => pollingEndpoint
+      case EngineIOTransport.Polling   => pollingEndpoint
       case EngineIOTransport.WebSocket => webSocketEndpoint
     }
   }
@@ -104,8 +107,8 @@ final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErr
         log.debug(s"Received poll request for $sid")
 
         (engineIOManager ? Retrieve(sid, transport, requestId)).map {
-          case Close(_, _, _) => Ok(EngineIOPacket(EngineIOPacketType.Close))
-          case Packets(_, _, Nil, _) => Ok(EngineIOPacket(EngineIOPacketType.Noop))
+          case Close(_, _, _)            => Ok(EngineIOPacket(EngineIOPacketType.Close))
+          case Packets(_, _, Nil, _)     => Ok(EngineIOPacket(EngineIOPacketType.Noop))
           case Packets(_, _, packets, _) => Ok(EngineIOPayload(packets))
         }
 
@@ -178,17 +181,17 @@ final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErr
 }
 
 /**
-  * The engine.io system. Allows you to create engine.io controllers for handling engine.io connections.
-  */
+ * The engine.io system. Allows you to create engine.io controllers for handling engine.io connections.
+ */
 @Singleton
 final class EngineIO @Inject() (config: EngineIOConfig, httpErrorHandler: HttpErrorHandler, controllerComponents: ControllerComponents,
-  actorSystem: ActorSystem)(implicit ec: ExecutionContext, mat: Materializer) {
+                                actorSystem: ActorSystem)(implicit ec: ExecutionContext, mat: Materializer) {
 
   private val log = Logger(classOf[EngineIO])
 
   /**
-    * Build the engine.io controller.
-    */
+   * Build the engine.io controller.
+   */
   def createController(handler: EngineIOSessionHandler): EngineIOController = {
     def startManager(): ActorRef = {
       val sessionProps = EngineIOSessionActor.props(config, handler)
@@ -224,10 +227,10 @@ final class EngineIO @Inject() (config: EngineIOConfig, httpErrorHandler: HttpEr
 }
 
 /**
-  * Provides engine.io components
-  *
-  * Mix this trait into your application cake to get an instance of [[EngineIO]] to build your engine.io engine with.
-  */
+ * Provides engine.io components
+ *
+ * Mix this trait into your application cake to get an instance of [[EngineIO]] to build your engine.io engine with.
+ */
 trait EngineIOComponents {
   def httpErrorHandler: HttpErrorHandler
   def controllerComponents: ControllerComponents
@@ -242,10 +245,10 @@ trait EngineIOComponents {
 }
 
 /**
-  * The engine.io module.
-  *
-  * Provides engine.io components to Play's runtime dependency injection implementation.
-  */
+ * The engine.io module.
+ *
+ * Provides engine.io components to Play's runtime dependency injection implementation.
+ */
 class EngineIOModule extends Module {
   override def bindings(environment: Environment, configuration: Configuration) = Seq(
     bind[EngineIOConfig].toProvider[EngineIOConfigProvider],

@@ -1,3 +1,6 @@
+/*
+ * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ */
 package play.socketio.javadsl;
 
 
@@ -6,10 +9,12 @@ import akka.japi.Pair;
 import akka.stream.Materializer;
 import akka.stream.OverflowStrategy;
 import akka.stream.javadsl.*;
+import akka.util.ByteString;
 import com.google.inject.AbstractModule;
 import controllers.ExternalAssets;
 import play.api.Application;
 import play.api.libs.json.JsString;
+import play.api.libs.json.JsValue;
 import play.api.routing.Router;
 import play.engineio.EngineIOController;
 import play.inject.guice.GuiceApplicationBuilder;
@@ -19,6 +24,7 @@ import play.socketio.TestSocketIOServer;
 import scala.Function3;
 import scala.Option;
 import scala.concurrent.ExecutionContext;
+import scala.util.Either;
 import scala.util.Left;
 import scala.collection.JavaConverters;
 
@@ -91,9 +97,9 @@ public class TestSocketIOJavaApplication implements TestSocketIOApplication {
                     .watchTermination((notUsed, future) ->
                         future.whenComplete((d, t) -> testDisconnectQueue.offer(
                             new SocketIOEvent("test disconnect",
-                                JavaConverters.asScalaBuffer(
-                                    Collections.singletonList(Left.apply(JsString.apply(session.sid())))
-                                ), Option.empty())
+                                JavaConverters.asScalaBufferConverter(
+                                    Collections.<Either<JsValue, ByteString>>singletonList(Left.apply(JsString.apply(session.sid())))
+                                ).asScala(), Option.empty())
                         ))
                     )
             );

@@ -1,3 +1,6 @@
+/*
+ * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ */
 package play.socketio.javadsl;
 
 import akka.NotUsed;
@@ -180,7 +183,7 @@ public class SocketIOEventCodec<In, Out> {
         if (arg.isLeft()) {
           // Note - IntelliJ is not very good at working out what the Java signatures produced by Scala objects
           // are, especially when they are nested, so this will be red in IntelliJ, but does compile.
-          JsonNode jsonNode = Reads.JsonNodeReads().reads(arg.left().get()).get();
+          JsonNode jsonNode = Reads$.MODULE$.JsonNodeReads().reads(arg.left().get()).get();
           return reader.readValue(jsonNode);
         } else {
           return reader.readValue(arg.right().get().toArray());
@@ -214,7 +217,7 @@ public class SocketIOEventCodec<In, Out> {
       JsonNode jsonNode = objectMapper.valueToTree(arg);
       // Note - IntelliJ is not very good at working out what the Java signatures produced by Scala objects
       // are, especially when they are nested, so this will be red in IntelliJ, but does compile.
-      return Left.apply(Writes.JsonNodeWrites().writes(jsonNode));
+      return Left.apply(Writes$.MODULE$.JsonNodeWrites().writes(jsonNode));
     };
   }
 
@@ -600,7 +603,9 @@ public class SocketIOEventCodec<In, Out> {
      */
     default <T2> TwoArgumentEncoder<T, T2> and(SingleArgumentEncoder<T2> encoder) {
       return args -> {
-        return JavaConverters.asScalaBuffer(Arrays.asList(encodeArg(args.first()), encoder.encodeArg(args.second())));
+        return JavaConverters.asScalaBufferConverter(
+            Arrays.asList(encodeArg(args.first()), encoder.encodeArg(args.second()))
+        ).asScala();
       };
     }
 
@@ -615,16 +620,15 @@ public class SocketIOEventCodec<In, Out> {
      */
     default <A> EventEncoder<Pair<T, Consumer<A>>> withAckDecoder(MultiArgumentDecoder<A> decoder) {
       return pair -> {
-        return SocketIOEvent.unnamed(encodeArgs(pair.first()), Some.apply(args -> {
-          pair.second().accept(decoder.decodeArgs(args));
-          return BoxedUnit.UNIT;
-        }));
+        return SocketIOEvent.unnamed(encodeArgs(pair.first()), Some.<SocketIOEventAck>apply(args ->
+          pair.second().accept(decoder.decodeArgs(args))
+        ));
       };
     }
 
     @Override
     default Seq<Either<JsValue, ByteString>> encodeArgs(T t) {
-      return JavaConverters.asScalaBuffer(Collections.singletonList(encodeArg(t)));
+      return JavaConverters.asScalaBufferConverter(Collections.singletonList(encodeArg(t))).asScala();
     }
   }
 
@@ -649,9 +653,10 @@ public class SocketIOEventCodec<In, Out> {
     default <T3> ThreeArgumentEncoder<T1, T2, T3> and(SingleArgumentEncoder<T3> encoder) {
       return args -> {
         Seq<Either<JsValue, ByteString>> init = encodeArgs(Pair.create(args._1, args._2));
-        List<Either<JsValue, ByteString>> result = new ArrayList<>(JavaConverters.asJavaCollection(init));
+        List<Either<JsValue, ByteString>> result =
+            new ArrayList<>(JavaConverters.asJavaCollectionConverter(init).asJavaCollection());
         result.add(encoder.encodeArg(args._3));
-        return JavaConverters.asScalaBuffer(result);
+        return JavaConverters.asScalaBufferConverter(result).asScala();
       };
     }
 
@@ -666,10 +671,9 @@ public class SocketIOEventCodec<In, Out> {
      */
     default <A> EventEncoder<F.Tuple3<T1, T2, Consumer<A>>> withAckDecoder(MultiArgumentDecoder<A> decoder) {
       return tuple -> {
-        return SocketIOEvent.unnamed(encodeArgs(Pair.create(tuple._1, tuple._2)), Some.apply(args -> {
-          tuple._3.accept(decoder.decodeArgs(args));
-          return BoxedUnit.UNIT;
-        }));
+        return SocketIOEvent.unnamed(encodeArgs(Pair.create(tuple._1, tuple._2)), Some.<SocketIOEventAck>apply(args ->
+          tuple._3.accept(decoder.decodeArgs(args))
+        ));
       };
     }
   }
@@ -695,9 +699,10 @@ public class SocketIOEventCodec<In, Out> {
     default <T4> MultiArgumentEncoder<F.Tuple4<T1, T2, T3, T4>> and(SingleArgumentEncoder<T4> encoder) {
       return args -> {
         Seq<Either<JsValue, ByteString>> init = encodeArgs(new F.Tuple3<>(args._1, args._2, args._3));
-        List<Either<JsValue, ByteString>> result = new ArrayList<>(JavaConverters.asJavaCollection(init));
+        List<Either<JsValue, ByteString>> result =
+            new ArrayList<>(JavaConverters.asJavaCollectionConverter(init).asJavaCollection());
         result.add(encoder.encodeArg(args._4));
-        return JavaConverters.asScalaBuffer(result);
+        return JavaConverters.asScalaBufferConverter(result).asScala();
       };
     }
 
@@ -712,10 +717,9 @@ public class SocketIOEventCodec<In, Out> {
      */
     default <A> EventEncoder<F.Tuple4<T1, T2, T3, Consumer<A>>> withAckDecoder(MultiArgumentDecoder<A> decoder) {
       return tuple -> {
-        return SocketIOEvent.unnamed(encodeArgs(new F.Tuple3<>(tuple._1, tuple._2, tuple._3)), Some.apply(args -> {
-          tuple._4.accept(decoder.decodeArgs(args));
-          return BoxedUnit.UNIT;
-        }));
+        return SocketIOEvent.unnamed(encodeArgs(new F.Tuple3<>(tuple._1, tuple._2, tuple._3)), Some.<SocketIOEventAck>apply(args ->
+          tuple._4.accept(decoder.decodeArgs(args))
+        ));
       };
     }
   }

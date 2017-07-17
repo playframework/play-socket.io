@@ -1,16 +1,19 @@
+/*
+ * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ */
 package play.engineio
 
 import akka.actor.ExtendedActorSystem
-import akka.serialization.{BaseSerializer, SerializerWithStringManifest}
-import akka.util.{ByteString => AByteString}
-import com.google.protobuf.{ByteString => PByteString}
+import akka.serialization.{ BaseSerializer, SerializerWithStringManifest }
+import akka.util.{ ByteString => AByteString }
+import com.google.protobuf.{ ByteString => PByteString }
 import play.engineio.EngineIOManagerActor._
 import play.engineio.protocol._
-import play.engineio.protobuf.{engineio => p}
+import play.engineio.protobuf.{ engineio => p }
 
 /**
-  * Serializer for all messages sent to/from the EngineIOManagerActor.
-  */
+ * Serializer for all messages sent to/from the EngineIOManagerActor.
+ */
 class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends SerializerWithStringManifest with BaseSerializer {
 
   private val ConnectManifest = "A"
@@ -22,13 +25,13 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
   private val SessionClosedManifest = "G"
 
   override def manifest(obj: AnyRef) = obj match {
-    case _: Connect => ConnectManifest
-    case _: Packets => PacketsManifest
-    case _: Retrieve => RetrieveManifest
-    case _: Close => CloseManifest
+    case _: Connect                   => ConnectManifest
+    case _: Packets                   => PacketsManifest
+    case _: Retrieve                  => RetrieveManifest
+    case _: Close                     => CloseManifest
     case _: EngineIOEncodingException => EngineIOEncodingExceptionManifest
-    case _: UnknownSessionId => UnknownSessionIdManifest
-    case SessionClosed => SessionClosedManifest
+    case _: UnknownSessionId          => UnknownSessionIdManifest
+    case SessionClosed                => SessionClosedManifest
     case _ =>
       throw new IllegalArgumentException(s"I don't know how to serialize object of type ${obj.getClass}")
   }
@@ -38,8 +41,7 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
 
       case Connect(sid, transport, request, requestId) =>
         p.Connect(sid, encodeTransport(transport), requestId, request.method, request.uri, request.version,
-          request.headers.headers.map(header => p.HttpHeader(header._1, header._2))
-        )
+          request.headers.headers.map(header => p.HttpHeader(header._1, header._2)))
 
       case Packets(sid, transport, packets, requestId) =>
         p.Packets(sid, encodeTransport(transport), packets.map(encodePacket), requestId)
@@ -71,8 +73,7 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
       val connect = p.Connect.parseFrom(bytes)
       Connect(connect.sid, decodeTransport(connect.transport),
         new DeserializedRequestHeader(connect.method, connect.uri, connect.version,
-          connect.headers.map(h => (h.name, h.value))), connect.requestId
-      )
+          connect.headers.map(h => (h.name, h.value))), connect.requestId)
 
     case `PacketsManifest` =>
       val packets = p.Packets.parseFrom(bytes)
@@ -108,13 +109,13 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
   }
 
   private def encodeTransport(transport: EngineIOTransport): p.Transport = transport match {
-    case EngineIOTransport.Polling => p.Transport.POLLING
+    case EngineIOTransport.Polling   => p.Transport.POLLING
     case EngineIOTransport.WebSocket => p.Transport.WEBSOCKET
   }
 
   private def decodeTransport(transport: p.Transport): EngineIOTransport = transport match {
-    case p.Transport.POLLING => EngineIOTransport.Polling
-    case p.Transport.WEBSOCKET => EngineIOTransport.WebSocket
+    case p.Transport.POLLING             => EngineIOTransport.Polling
+    case p.Transport.WEBSOCKET           => EngineIOTransport.WebSocket
     case p.Transport.Unrecognized(value) => throw new IllegalArgumentException("Unrecognized transport: " + value)
   }
 
@@ -136,7 +137,7 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
 
   private def encodePacket(packet: EngineIOPacket): p.Packet = {
     p.Packet(p.PacketType.fromValue(packet.typeId.id), packet match {
-      case Utf8EngineIOPacket(_, text) => p.Packet.Payload.Text(text)
+      case Utf8EngineIOPacket(_, text)    => p.Packet.Payload.Text(text)
       case BinaryEngineIOPacket(_, bytes) => p.Packet.Payload.Binary(encodeBytes(bytes))
     })
   }

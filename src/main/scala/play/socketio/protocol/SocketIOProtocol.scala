@@ -1,15 +1,18 @@
+/*
+ * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ */
 package play.socketio.protocol
 
 import akka.util.ByteString
 import play.api.libs.json._
 import play.engineio.protocol._
-import play.engineio.{BinaryEngineIOMessage, EngineIOMessage, TextEngineIOMessage}
+import play.engineio.{ BinaryEngineIOMessage, EngineIOMessage, TextEngineIOMessage }
 
 import scala.collection.immutable
 
 /**
-  * A socket.io packet type.
-  */
+ * A socket.io packet type.
+ */
 sealed abstract class SocketIOPacketType private (val id: Int) {
   // Encode the packet as a char.
   val asChar = id.toString.head
@@ -32,13 +35,13 @@ object SocketIOPacketType {
     case '4' => Error
     case '5' => BinaryEvent
     case '6' => BinaryAck
-    case _ => throw SocketIOEncodingException("", "Unknown socket.io packet type: " + char)
+    case _   => throw SocketIOEncodingException("", "Unknown socket.io packet type: " + char)
   }
 }
 
 /**
-  * A socket.io packet.
-  */
+ * A socket.io packet.
+ */
 sealed trait SocketIOPacket {
   def packetType: SocketIOPacketType
   val namespace: Option[String]
@@ -88,8 +91,8 @@ case class SocketIOBinaryAckPacket(namespace: Option[String], data: Seq[Either[J
 object SocketIOPacket {
 
   /**
-    * When encoding a binary packet, each binary data element will result in an additional packet being sent.
-    */
+   * When encoding a binary packet, each binary data element will result in an additional packet being sent.
+   */
   def encode(packet: SocketIOPacket): List[EngineIOMessage] = {
 
     // First, write packet type. Binary packets get handled specially.
@@ -127,8 +130,7 @@ object SocketIOPacket {
         message += ','
       }
       id.foreach(id =>
-        message ++= id.toString
-      )
+        message ++= id.toString)
       message ++= Json.stringify(data)
     }
 
@@ -161,8 +163,8 @@ object SocketIOPacket {
   }
 
   /**
-    * Decode an engine IO packet into a socket IO packet and a number of expected binary messages to follow.
-    */
+   * Decode an engine IO packet into a socket IO packet and a number of expected binary messages to follow.
+   */
   def decode(text: String): (SocketIOPacket, Int) = {
     if (text.isEmpty) {
       throw SocketIOEncodingException(text, "Empty socket.io packet")
@@ -185,7 +187,6 @@ object SocketIOPacket {
     } else {
       (0, 1)
     }
-
 
     val (namespace, dataStart) = if (text.length > namespaceStart && text(namespaceStart) == '/') {
       val namespaceEnd = text.indexOf(',', namespaceStart)
@@ -271,8 +272,8 @@ object SocketIOPacket {
 }
 
 /**
-  * Exception thrown when there was a problem encoding or decoding a socket.io packet from the underlying engine.io
-  * packets.
-  */
+ * Exception thrown when there was a problem encoding or decoding a socket.io packet from the underlying engine.io
+ * packets.
+ */
 case class SocketIOEncodingException(packet: String, message: String, cause: Exception = null)
   extends RuntimeException(s"Error decoding socket IO packet '${packet.take(80)}${if (packet.length > 80) "..." else ""}': $message", cause)

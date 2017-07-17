@@ -1,11 +1,14 @@
+/*
+ * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ */
 package play.socketio
 
-import play.api.{Configuration, Environment}
+import play.api.{ Configuration, Environment }
 import play.api.inject.Module
 
 /**
-  * Module for providing both scaladsl and javadsl socket.io components to Play's runtime dependency injection system.
-  */
+ * Module for providing both scaladsl and javadsl socket.io components to Play's runtime dependency injection system.
+ */
 class SocketIOModule extends Module {
   override def bindings(environment: Environment, configuration: Configuration) = Seq(
     bind[SocketIOConfig].toProvider[SocketIOConfigProvider],

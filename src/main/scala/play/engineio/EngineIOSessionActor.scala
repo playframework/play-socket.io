@@ -1,10 +1,13 @@
+/*
+ * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ */
 package play.engineio
 
-import akka.actor.{Actor, ActorLogging, ActorRef, DeadLetterSuppression, Props, Status}
+import akka.actor.{ Actor, ActorLogging, ActorRef, DeadLetterSuppression, Props, Status }
 import akka.pattern.pipe
 import akka.stream._
 import akka.stream.scaladsl._
-import akka.{Done, NotUsed}
+import akka.{ Done, NotUsed }
 import play.api.mvc.RequestHeader
 import play.engineio.protocol.EngineIOTransport.Polling
 import play.engineio.protocol._
@@ -12,39 +15,39 @@ import play.engineio.protocol._
 import scala.util.control.NonFatal
 
 /**
-  * Actor that provides engine.io sessions.
-  *
-  * All the messages below are sent from this actor to itself.
-  */
+ * Actor that provides engine.io sessions.
+ *
+ * All the messages below are sent from this actor to itself.
+ */
 object EngineIOSessionActor {
 
   /**
-    * The the result of the engine.io handler connect operation.
-    */
+   * The the result of the engine.io handler connect operation.
+   */
   case class Connected(flow: Flow[EngineIOMessage, Seq[EngineIOMessage], NotUsed], requestId: String)
 
   /**
-    * Sent when the engine.io handler throws an exception.
-    */
+   * Sent when the engine.io handler throws an exception.
+   */
   case class ConnectionRefused(e: Throwable)
 
   /**
-    * The result of pulling from the sink queue.
-    */
+   * The result of pulling from the sink queue.
+   */
   case class PulledPackets(packets: Seq[EngineIOPacket]) extends DeadLetterSuppression
 
   /**
-    * Message sent when the source queue acknowledges that they've been sent.
-    */
+   * Message sent when the source queue acknowledges that they've been sent.
+   */
   case object MessagesPushed
 
   /**
-    * A tick.
-    */
+   * A tick.
+   */
   case object Tick extends DeadLetterSuppression
 
   def props[SessionData](
-    config: EngineIOConfig,
+    config:  EngineIOConfig,
     handler: EngineIOSessionHandler
   )(implicit mat: Materializer) = Props {
 
@@ -53,10 +56,10 @@ object EngineIOSessionActor {
 }
 
 /**
-  * Actor that provides engine.io sessions.
-  */
+ * Actor that provides engine.io sessions.
+ */
 class EngineIOSessionActor[SessionData](
-  config: EngineIOConfig,
+  config:  EngineIOConfig,
   handler: EngineIOSessionHandler
 )(implicit mat: Materializer) extends Actor with ActorLogging {
 
@@ -174,9 +177,11 @@ class EngineIOSessionActor[SessionData](
 
     case Connected(flow, requestId) =>
       log.debug("{} - Connection successful", sid)
-      sender ! Packets(sid, activeTransport, Seq(EngineIOPacket(EngineIOPacketType.Open,
+      sender ! Packets(sid, activeTransport, Seq(EngineIOPacket(
+        EngineIOPacketType.Open,
         EngineIOOpenMessage(sid, config.transports.filterNot(_ == activeTransport), pingInterval = config.pingInterval,
-          pingTimeout = config.pingTimeout))), requestId)
+          pingTimeout = config.pingTimeout)
+      )), requestId)
 
       doConnect(flow)
 
@@ -205,7 +210,7 @@ class EngineIOSessionActor[SessionData](
   private def doConnect(flow: Flow[EngineIOMessage, Seq[EngineIOMessage], NotUsed]): Unit = {
 
     def messagesToPackets(messages: Seq[EngineIOMessage]) = messages.map {
-      case TextEngineIOMessage(text) => Utf8EngineIOPacket(EngineIOPacketType.Message, text)
+      case TextEngineIOMessage(text)    => Utf8EngineIOPacket(EngineIOPacketType.Message, text)
       case BinaryEngineIOMessage(bytes) => BinaryEngineIOPacket(EngineIOPacketType.Message, bytes)
     }
 
@@ -335,13 +340,13 @@ class EngineIOSessionActor[SessionData](
           context.stop(self)
 
         case EngineIOPacketType.Pong =>
-          // We don't send pings, so we're not likely to get a pong, but who cares, ignore it
+        // We don't send pings, so we're not likely to get a pong, but who cares, ignore it
 
         case EngineIOPacketType.Noop =>
-          // Noop, ignore.
+        // Noop, ignore.
 
         case EngineIOPacketType.Open =>
-          // We shouldn't get this, ignore
+        // We shouldn't get this, ignore
       }
     }
 
@@ -393,7 +398,7 @@ class EngineIOSessionActor[SessionData](
     if (!currentlyPullingPackets) {
       sinkQueue.pull().map {
         case Some(packets) => PulledPackets(packets)
-        case None => PulledPackets(Nil)
+        case None          => PulledPackets(Nil)
       } pipeTo self
       currentlyPullingPackets = true
     }

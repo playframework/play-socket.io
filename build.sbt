@@ -8,7 +8,7 @@ lazy val runPhantomjs = taskKey[Unit]("Run the phantomjs tests")
 playBuildRepoName in ThisBuild := "play-socket.io"
 
 lazy val root = (project in file("."))
-  .enablePlugins(PlayLibrary, AutomateHeaderPlugin)
+  .enablePlugins(PlayReleaseBase, PlayLibrary, AutomateHeaderPlugin)
   .settings(
     organization := "com.lightbend.play",
     name := "play-socket-io",

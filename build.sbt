@@ -6,14 +6,13 @@ val AkkaVersion = "2.5.3"
 lazy val runPhantomjs = taskKey[Unit]("Run the phantomjs tests")
 
 playBuildRepoName in ThisBuild := "play-socket.io"
+sonatypeProfileName in ThisBuild := "com.lightbend"
 
 lazy val root = (project in file("."))
   .enablePlugins(PlayReleaseBase, PlayLibrary, AutomateHeaderPlugin)
   .settings(
     organization := "com.lightbend.play",
     name := "play-socket-io",
-
-    scalaVersion := "2.12.2",
 
     scalacOptions ++= Seq("-feature", "-Xfatal-warnings"),
     scalacOptions in (Compile, doc) := Nil,

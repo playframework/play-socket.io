@@ -7,7 +7,7 @@ This describes the Play socket.io Scala support.
 You can add Play socket.io to your project by adding the following dependency:
 
 ```scala
-libraryDependencies += "com.lightbend.play" %% "play-socket.io" % "1.0.0"
+libraryDependencies += "com.lightbend.play" %% "play-socket-io" % "1.0.0-beta-1"
 ```
 
 ## Understanding socket.io and engine.io

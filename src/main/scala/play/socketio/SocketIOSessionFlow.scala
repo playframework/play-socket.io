@@ -297,7 +297,7 @@ private class SocketIOSessionStage[SessionData](
             pushError(namespace, NamespaceAlreadyConnected(namespace))
           } else {
             try {
-              namespace match {
+              nsWithQuery match {
                 case None =>
                   connectNamespace(namespace, defaultNamespaceCallback(session))
                 case Some(ns) =>

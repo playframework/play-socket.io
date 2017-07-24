@@ -65,10 +65,10 @@ class EngineIOConfigProvider @Inject() (configuration: Configuration) extends Pr
  *
  * For example:
  *
- * ```
+ * {{{
  * GET     /socket.io/        play.engineio.EngineIOController.endpoint(transport)
  * POST    /socket.io/        play.engineio.EngineIOController.endpoint(transport)
- * ```
+ * }}}
  */
 final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErrorHandler, controllerComponents: ControllerComponents,
                                actorSystem: ActorSystem, engineIOManager: ActorRef)(implicit ec: ExecutionContext) extends AbstractController(controllerComponents) {

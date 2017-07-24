@@ -10,10 +10,10 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.{ Flow, Sink, Source }
 import play.api.libs.json.{ JsString, JsValue }
 import play.api.mvc.RequestHeader
-import play.api.{ Configuration, Environment, Logger }
+import play.api.Logger
 import play.engineio._
 import SocketIOEventCodec.{ SocketIOEventsDecoder, SocketIOEventsEncoder }
-import play.api.inject.Module
+import play.core.parsers.FormUrlEncodedParser
 import play.socketio._
 
 import scala.concurrent.{ ExecutionContext, Future }
@@ -146,7 +146,7 @@ final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(impl
      */
     def addNamespace[In, Out](name: String, decoder: SocketIOEventsDecoder[In], encoder: SocketIOEventsEncoder[Out], flow: Flow[In, Out, _]): SocketIOBuilder[SessionData] = {
       addNamespace(decoder, encoder) {
-        case (_, `name`) => flow
+        case (_, NamespaceWithQuery(`name`, _)) => flow
       }
     }
 
@@ -193,6 +193,31 @@ final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(impl
 
     private def createNamespace[In, Out](decoder: SocketIOEventsDecoder[In], encoder: SocketIOEventsEncoder[Out], flow: Flow[In, Out, _]): Flow[SocketIOEvent, SocketIOEvent, _] = {
       Flow[SocketIOEvent] map decoder via flow map encoder
+    }
+  }
+}
+
+/**
+ * Extractor for matching namespaces that have queries.
+ *
+ * Can be used with a namespace partial function, for example:
+ *
+ * {{{
+ *   addNamespace(decoder, encoder) {
+ *     case (session, NamespaceWithQuery("/chat", query)) =>
+ *       ...
+ *   }
+ * }}}
+ */
+object NamespaceWithQuery {
+  def unapply(namespace: String): Option[(String, Map[String, Seq[String]])] = {
+    val parts = namespace.split("\\?", 2)
+    parts match {
+      case Array(path) =>
+        Some((path, Map.empty))
+      case Array(path, query) =>
+        Some((path, FormUrlEncodedParser.parse(query)))
+      case _ => None
     }
   }
 }

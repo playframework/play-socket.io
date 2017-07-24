@@ -191,7 +191,9 @@ public final class SocketIO {
     public <In, Out> SocketIOBuilder<SessionData> addNamespace(String name,
         SocketIOEventCodec<In, Out> codec, Flow<In, Out, ?> flow) {
       return addNamespace(codec, (session, namespace) -> {
-        if (namespace.equals(name)) {
+        // Drop the query string
+        String[] parts = namespace.split("\\?", 2);
+        if (parts[0].equals(name)) {
           return Optional.of(flow);
         } else {
           return Optional.empty();

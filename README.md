@@ -20,6 +20,10 @@ See the [Java](./docs/JavaSocketIO.md) and [Scala](./docs/ScalaSocketIO.md) docu
 
 Sample apps can be found [here](./samples).
 
+## License and support
+
+This software is copyright 2017 Lightbend, and is licensed under the [Apache 2 license](LICENSE). The Lightbend subscription does not cover support for this software.
+
 ## Developing
 
 ### Testing

@@ -24,6 +24,8 @@ Sample apps can be found [here](./samples).
 
 This software is copyright 2017 Lightbend, and is licensed under the [Apache 2 license](LICENSE). The Lightbend subscription does not cover support for this software.
 
+As this software is still in beta status, no guarantees are made with regards to binary or source compatibility between versions.
+
 ## Developing
 
 ### Testing

@@ -258,8 +258,8 @@ val encoder = encodeByType[ChatEvent] {
     "join room" -> (encodeJson[String] ~ encodeJson[String] compose[JoinRoom] {
       case JoinRoom(user, room) => (user, room)
     })
-  case _: JoinRoom =>
-    "join room" -> (encodeJson[String] ~ encodeJson[String] compose[LeaveRoom] {
+  case _: LeaveRoom =>
+    "leave room" -> (encodeJson[String] ~ encodeJson[String] compose[LeaveRoom] {
       case LeaveRoom(user, room) => (user, room)
     })
 }

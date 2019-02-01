@@ -35,3 +35,9 @@ Integration tests are written in JavaScript using mocha and chai, so that the Ja
 There are multiple different backends that the tests are run against, including one implemented in Java, one in Scala, and one in a multi node setup. To debug them, you can start these tests by running `runJavaServer`, `runScalaServer` and `runMultiNodeServer` from `sbt`, then visit `http://localhost:9000`. This will bring you to an index page will includes and will run the mocha test suite against the backend you started. From there, you can set breakpoints in the JavaScript, and inspect the communication using your browsers developer tools.
 
 The test runner runs the tests against each of these backends, using phantomjs as the browser, and it extracts the test results out and prints them nicely to the console as the tests are running.
+
+## Support
+
+The Play backed socket.io support library is *[Incubating][]*.
+
+[Incubating]: https://developer.lightbend.com/docs/reactive-platform/2.0/support-terminology/index.html#incubating

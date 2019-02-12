@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright 2015 Awesome Company
  */
+
 package play.socketio
 
 import play.api.{ Configuration, Environment }
@@ -13,6 +14,5 @@ class SocketIOModule extends Module {
   override def bindings(environment: Environment, configuration: Configuration) = Seq(
     bind[SocketIOConfig].toProvider[SocketIOConfigProvider],
     bind[scaladsl.SocketIO].toSelf,
-    bind[javadsl.SocketIO].toSelf
-  )
+    bind[javadsl.SocketIO].toSelf)
 }

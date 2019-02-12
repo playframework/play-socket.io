@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright 2015 Awesome Company
  */
+
 package play.socketio
 
 import akka.NotUsed
@@ -36,8 +37,7 @@ object SocketIOSessionFlow {
     connectCallback:            (RequestHeader, String) => Future[SessionData],
     errorHandler:               PartialFunction[Throwable, JsValue],
     defaultNamespaceCallback:   SocketIOSession[SessionData] => Flow[SocketIOEvent, SocketIOEvent, _],
-    connectToNamespaceCallback: PartialFunction[(SocketIOSession[SessionData], String), Flow[SocketIOEvent, SocketIOEvent, _]]
-  )(implicit ec: ExecutionContext, mat: Materializer): EngineIOSessionHandler = {
+    connectToNamespaceCallback: PartialFunction[(SocketIOSession[SessionData], String), Flow[SocketIOEvent, SocketIOEvent, _]])(implicit ec: ExecutionContext, mat: Materializer): EngineIOSessionHandler = {
 
     new EngineIOSessionHandler {
       override def onConnect(request: RequestHeader, sid: String) = {
@@ -49,8 +49,7 @@ object SocketIOSessionFlow {
 
           BidiFlow.fromGraph(stage).joinMat(Flow.fromSinkAndSourceMat(
             BroadcastHub.sink[NamespacedSocketIOMessage],
-            MergeHub.source[NamespacedSocketIOMessage]
-          )(Keep.both)) {
+            MergeHub.source[NamespacedSocketIOMessage])(Keep.both)) {
             case (receiver, (broadcastSource, mergeSink)) =>
               val demuxMuxer = new NamespaceDemuxMuxer(broadcastSource, mergeSink)
               receiver.provideNamespaceDemuxMuxer(demuxMuxer)
@@ -87,8 +86,7 @@ private class SocketIOSessionStage[SessionData](
   session:                    SocketIOSession[SessionData],
   errorHandler:               PartialFunction[Throwable, JsValue],
   defaultNamespaceCallback:   SocketIOSession[SessionData] => Flow[SocketIOEvent, SocketIOEvent, _],
-  connectToNamespaceCallback: PartialFunction[(SocketIOSession[SessionData], String), Flow[SocketIOEvent, SocketIOEvent, _]]
-) extends GraphStageWithMaterializedValue[BidiShape[EngineIOMessage, NamespacedSocketIOMessage, NamespacedSocketIOMessage, Seq[EngineIOMessage]], DemuxMuxReceiver] {
+  connectToNamespaceCallback: PartialFunction[(SocketIOSession[SessionData], String), Flow[SocketIOEvent, SocketIOEvent, _]]) extends GraphStageWithMaterializedValue[BidiShape[EngineIOMessage, NamespacedSocketIOMessage, NamespacedSocketIOMessage, Seq[EngineIOMessage]], DemuxMuxReceiver] {
 
   val engineIOIn = Inlet[EngineIOMessage]("EngineIOIn")
   val socketIOOut = Outlet[NamespacedSocketIOMessage]("SocketIOOut")
@@ -155,14 +153,12 @@ private class SocketIOSessionStage[SessionData](
             case (_: TextEngineIOMessage, Some(_)) =>
               pushError(
                 None,
-                UnexpectedPacketException("Received a text engine.io message while waiting for a binary message to complete a socket.io binary packet")
-              )
+                UnexpectedPacketException("Received a text engine.io message while waiting for a binary message to complete a socket.io binary packet"))
 
             case (_: BinaryEngineIOMessage, None) =>
               pushError(
                 None,
-                UnexpectedPacketException("Received unexpected binary engine.io message")
-              )
+                UnexpectedPacketException("Received unexpected binary engine.io message"))
 
             case (TextEngineIOMessage(text), None) =>
               try {
@@ -187,18 +183,15 @@ private class SocketIOSessionStage[SessionData](
                   case SocketIOBinaryEventPacket(namespace, data, id) =>
                     handleSocketIOPacket(SocketIOBinaryEventPacket(
                       namespace,
-                      SocketIOPacket.replacePlaceholders(data, currentBinaryPacketFragments), id
-                    ))
+                      SocketIOPacket.replacePlaceholders(data, currentBinaryPacketFragments), id))
                   case SocketIOBinaryAckPacket(namespace, data, id) =>
                     handleSocketIOPacket(SocketIOBinaryAckPacket(
                       namespace,
-                      SocketIOPacket.replacePlaceholders(data, currentBinaryPacketFragments), id
-                    ))
+                      SocketIOPacket.replacePlaceholders(data, currentBinaryPacketFragments), id))
                   case _ =>
                     pushError(
                       None,
-                      UnexpectedPacketException("Received unexpected non binary fragmented socket.io packet with binary fragments")
-                    )
+                      UnexpectedPacketException("Received unexpected non binary fragmented socket.io packet with binary fragments"))
                 }
                 currentBinaryPacketFragments = IndexedSeq.empty
                 currentBinaryPacket = None
@@ -305,9 +298,7 @@ private class SocketIOSessionStage[SessionData](
                     namespace,
                     connectToNamespaceCallback.applyOrElse(
                       (session, ns),
-                      { _: (SocketIOSession[SessionData], String) => throw NamespaceNotFound(namespace) }
-                    )
-                  )
+                      { _: (SocketIOSession[SessionData], String) => throw NamespaceNotFound(namespace) }))
               }
             } catch {
               case NonFatal(e) =>
@@ -426,8 +417,7 @@ private class SocketIOSessionStage[SessionData](
  */
 private class NamespaceDemuxMuxer(
   broadcastSource: Source[NamespacedSocketIOMessage, NotUsed],
-  mergeSink:       Sink[NamespacedSocketIOMessage, NotUsed]
-)(implicit materializer: Materializer) {
+  mergeSink:       Sink[NamespacedSocketIOMessage, NotUsed])(implicit materializer: Materializer) {
 
   def addNamespace(namespace: Option[String], flow: Flow[SocketIOEvent, SocketIOEvent, _]): Unit = {
     broadcastSource

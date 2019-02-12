@@ -1,5 +1,5 @@
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
-import de.heikoseeberger.sbtheader.HeaderPattern
+
 import play.core.PlayVersion.{current => playVersion}
 val AkkaVersion = "2.5.3"
 
@@ -65,22 +65,10 @@ lazy val root = (project in file("."))
 
     resolvers += "jitpack" at "https://jitpack.io",
 
-    headers := headers.value ++ Map(
-      "scala" -> (
-        HeaderPattern.cStyleBlockComment,
-        """|/*
-           | * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
-           | */
-           |""".stripMargin
-      ),
-      "java" -> (
-        HeaderPattern.cStyleBlockComment,
-        """|/*
-           | * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
-           | */
-           |""".stripMargin
-      )
-    ),
+    headerLicense := Some(HeaderLicense.Custom(
+    """|Copyright 2015 Awesome Company
+       |""".stripMargin
+    )),
 
     ScalariformKeys.preferences in Compile  := formattingPreferences,
     ScalariformKeys.preferences in Test     := formattingPreferences

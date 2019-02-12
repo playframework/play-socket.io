@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright 2015 Awesome Company
  */
+
 package play.socketio.javadsl
 
 import java.util.Optional
@@ -30,8 +31,7 @@ private[javadsl] object SocketIOSessionFlowHelper {
     connectCallback:            BiFunction[RequestHeader, String, CompletionStage[SessionData]],
     errorHandler:               Function[Throwable, Optional[JsonNode]],
     defaultNamespaceCallback:   Function[SocketIOSession[SessionData], Flow[SocketIOEvent, SocketIOEvent, NotUsed]],
-    connectToNamespaceCallback: BiFunction[SocketIOSession[SessionData], String, Optional[Flow[SocketIOEvent, SocketIOEvent, NotUsed]]]
-  )(implicit ec: ExecutionContext, mat: Materializer) = {
+    connectToNamespaceCallback: BiFunction[SocketIOSession[SessionData], String, Optional[Flow[SocketIOEvent, SocketIOEvent, NotUsed]]])(implicit ec: ExecutionContext, mat: Materializer) = {
     SocketIOSessionFlow.createEngineIOSessionHandler[SessionData](
       config,
       (request, sid) => connectCallback(request.asJava, sid).toScala,
@@ -39,7 +39,6 @@ private[javadsl] object SocketIOSessionFlowHelper {
       session => defaultNamespaceCallback(session).asScala,
       unlift {
         case (session, sid) => connectToNamespaceCallback(session, sid).asScala.map(_.asScala)
-      }
-    )
+      })
   }
 }

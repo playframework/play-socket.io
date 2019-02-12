@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright 2015 Awesome Company
  */
+
 package play.engineio
 
 import java.net.URI
@@ -21,8 +22,7 @@ private[engineio] class DeserializedRequestHeader(
   val method:  String,
   rawUri:      String,
   val version: String,
-  headerSeq:   Seq[(String, String)]
-) extends RequestHeader {
+  headerSeq:   Seq[(String, String)]) extends RequestHeader {
   override lazy val connection = RemoteConnection("0.0.0.0", false, None)
   override def attrs = TypedMap.empty
   override lazy val headers = Headers(headerSeq: _*)

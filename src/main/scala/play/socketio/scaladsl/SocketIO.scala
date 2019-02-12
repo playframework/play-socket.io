@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright 2015 Awesome Company
  */
+
 package play.socketio.scaladsl
 
 import javax.inject.Inject
@@ -42,8 +43,7 @@ final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(impl
         case e                         => JsString(e.getClass.getName)
       },
       _ => Flow.fromSinkAndSource(Sink.ignore, Source.maybe),
-      PartialFunction.empty
-    )
+      PartialFunction.empty)
   }
 
   /**
@@ -53,8 +53,7 @@ final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(impl
     connectCallback:            (RequestHeader, String) => Future[SessionData],
     errorHandler:               PartialFunction[Throwable, JsValue],
     defaultNamespaceCallback:   SocketIOSession[SessionData] => Flow[SocketIOEvent, SocketIOEvent, _],
-    connectToNamespaceCallback: PartialFunction[(SocketIOSession[SessionData], String), Flow[SocketIOEvent, SocketIOEvent, _]]
-  ) {
+    connectToNamespaceCallback: PartialFunction[(SocketIOSession[SessionData], String), Flow[SocketIOEvent, SocketIOEvent, _]]) {
 
     /**
      * Set the onConnect callback.
@@ -85,8 +84,7 @@ final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(impl
         callback,
         errorHandler,
         defaultNamespaceCallback,
-        connectToNamespaceCallback
-      )
+        connectToNamespaceCallback)
     }
 
     /**
@@ -103,8 +101,7 @@ final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(impl
         connectCallback,
         handler.orElse(errorHandler),
         defaultNamespaceCallback,
-        connectToNamespaceCallback
-      )
+        connectToNamespaceCallback)
     }
 
     /**
@@ -132,8 +129,7 @@ final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(impl
         connectCallback,
         errorHandler,
         session => createNamespace(decoder, encoder, callback(session)),
-        connectToNamespaceCallback
-      )
+        connectToNamespaceCallback)
     }
 
     /**
@@ -172,8 +168,7 @@ final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(impl
         defaultNamespaceCallback,
         connectToNamespaceCallback.orElse(callback.andThen { flow =>
           createNamespace(decoder, encoder, flow)
-        })
-      )
+        }))
     }
 
     /**
@@ -185,8 +180,7 @@ final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(impl
         connectCallback,
         errorHandler,
         defaultNamespaceCallback,
-        connectToNamespaceCallback
-      )
+        connectToNamespaceCallback)
 
       engineIO.createController(handler)
     }

@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright 2015 Awesome Company
  */
+
 package play.engineio.protocol
 
 import java.util.Base64
@@ -46,15 +47,13 @@ object EngineIOOpenMessage {
     (__ \ "sid").read[String] ~
     (__ \ "upgrades").readWithDefault[Seq[String]](Nil).map(_.map(EngineIOTransport.fromName)) ~
     (__ \ "pingInterval").read[Long].map(_.millis) ~
-    (__ \ "pingTimeout").read[Long].map(_.millis)
-  ).apply(EngineIOOpenMessage.apply _)
+    (__ \ "pingTimeout").read[Long].map(_.millis)).apply(EngineIOOpenMessage.apply _)
 
   implicit val writes: Writes[EngineIOOpenMessage] = (
     (__ \ "sid").write[String] ~
     (__ \ "upgrades").write[Seq[String]].contramap[Seq[EngineIOTransport]](_.map(_.name)) ~
     (__ \ "pingInterval").write[Long].contramap[FiniteDuration](_.toMillis) ~
-    (__ \ "pingTimeout").write[Long].contramap[FiniteDuration](_.toMillis)
-  ).apply(o => (o.sid, o.upgrades, o.pingInterval, o.pingTimeout))
+    (__ \ "pingTimeout").write[Long].contramap[FiniteDuration](_.toMillis)).apply(o => (o.sid, o.upgrades, o.pingInterval, o.pingTimeout))
 }
 
 /**

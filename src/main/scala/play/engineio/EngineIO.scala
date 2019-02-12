@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright 2015 Awesome Company
  */
+
 package play.engineio
 
 import java.util.UUID
@@ -32,8 +33,7 @@ case class EngineIOConfig(
   transports:   Seq[EngineIOTransport] = Seq(EngineIOTransport.WebSocket, EngineIOTransport.Polling),
   actorName:    String                 = "engine.io",
   routerName:   Option[String]         = None,
-  useRole:      Option[String]         = None
-)
+  useRole:      Option[String]         = None)
 
 object EngineIOConfig {
   def fromConfiguration(configuration: Configuration) = {
@@ -44,8 +44,7 @@ object EngineIOConfig {
       transports = config.get[Seq[String]]("transports").map(EngineIOTransport.fromName),
       actorName = config.get[String]("actor-name"),
       routerName = config.get[Option[String]]("router-name"),
-      useRole = config.get[Option[String]]("use-role")
-    )
+      useRole = config.get[Option[String]]("use-role"))
   }
 }
 
@@ -252,6 +251,5 @@ trait EngineIOComponents {
 class EngineIOModule extends Module {
   override def bindings(environment: Environment, configuration: Configuration) = Seq(
     bind[EngineIOConfig].toProvider[EngineIOConfigProvider],
-    bind[EngineIO].toSelf
-  )
+    bind[EngineIO].toSelf)
 }

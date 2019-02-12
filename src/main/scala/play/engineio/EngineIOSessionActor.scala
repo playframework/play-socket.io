@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright 2015 Awesome Company
  */
+
 package play.engineio
 
 import akka.actor.{ Actor, ActorLogging, ActorRef, DeadLetterSuppression, Props, Status }
@@ -48,8 +49,7 @@ object EngineIOSessionActor {
 
   def props[SessionData](
     config:  EngineIOConfig,
-    handler: EngineIOSessionHandler
-  )(implicit mat: Materializer) = Props {
+    handler: EngineIOSessionHandler)(implicit mat: Materializer) = Props {
 
     new EngineIOSessionActor[SessionData](config, handler)
   }
@@ -60,8 +60,7 @@ object EngineIOSessionActor {
  */
 class EngineIOSessionActor[SessionData](
   config:  EngineIOConfig,
-  handler: EngineIOSessionHandler
-)(implicit mat: Materializer) extends Actor with ActorLogging {
+  handler: EngineIOSessionHandler)(implicit mat: Materializer) extends Actor with ActorLogging {
 
   import context.dispatcher
 
@@ -180,8 +179,7 @@ class EngineIOSessionActor[SessionData](
       sender ! Packets(sid, activeTransport, Seq(EngineIOPacket(
         EngineIOPacketType.Open,
         EngineIOOpenMessage(sid, config.transports.filterNot(_ == activeTransport), pingInterval = config.pingInterval,
-          pingTimeout = config.pingTimeout)
-      )), requestId)
+          pingTimeout = config.pingTimeout))), requestId)
 
       doConnect(flow)
 

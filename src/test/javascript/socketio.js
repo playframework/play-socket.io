@@ -83,12 +83,12 @@ modes.forEach(function (mode) {
     });
 
     it("should allow sending acks in both directions", function(done) {
+      socket.on("m", function(arg, ack) {
+        ack("This is an acked ack");
+      });
       socket.emit("m", "hello", function(arg) {
         expect(arg).to.equal("This is an acked ack");
         done();
-      });
-      socket.on("m", function(arg, ack) {
-        ack("This is an acked ack");
       });
     });
 
@@ -103,14 +103,14 @@ modes.forEach(function (mode) {
     });
 
     it("should support binary acks", function(done) {
+      socket.on("m", function(arg, ack) {
+        var blob = new Blob(["this is a binary acked ack"], {type: "text/plain"});
+        ack(blob);
+      });
       socket.emit("m", "hello", function(arg) {
         var text = new TextDecoder("utf-8").decode(arg);
         expect(text).to.equal("this is a binary acked ack");
         done();
-      });
-      socket.on("m", function(arg, ack) {
-        var blob = new Blob(["this is a binary acked ack"], {type: "text/plain"});
-        ack(blob);
       });
     });
 
@@ -123,21 +123,21 @@ modes.forEach(function (mode) {
 
     it("should allow sending and receiving messages on a namespace", function(done) {
       var socket = connect("/test");
-      socket.emit("m", "hello");
       socket.on("m", function(arg) {
         expect(arg).to.equal("hello");
         done();
       });
+      socket.emit("m", "hello");
     });
 
     it("should allow sending acks in both directions on a namespace", function(done) {
       var socket = connect("/test");
+      socket.on("m", function(arg, ack) {
+        ack("This is an acked ack");
+      });
       socket.emit("m", "hello", function(arg) {
         expect(arg).to.equal("This is an acked ack");
         done();
-      });
-      socket.on("m", function(arg, ack) {
-        ack("This is an acked ack");
       });
     });
 

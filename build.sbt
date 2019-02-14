@@ -66,7 +66,7 @@ lazy val root = (project in file("."))
     resolvers += "jitpack" at "https://jitpack.io",
 
     headerLicense := Some(HeaderLicense.Custom(
-    """|Copyright 2015 Awesome Company
+    """|Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
        |""".stripMargin
     )),
 

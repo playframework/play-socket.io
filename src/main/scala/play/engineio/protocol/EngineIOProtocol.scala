@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Awesome Company
+ * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
  */
 
 package play.engineio.protocol

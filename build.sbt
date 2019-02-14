@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 
 import play.core.PlayVersion.{current => playVersion}
-val AkkaVersion = "2.5.3"
+val AkkaVersion = "2.5.20"
 
 lazy val runPhantomjs = taskKey[Unit]("Run the phantomjs tests")
 
@@ -38,6 +38,9 @@ lazy val root = (project in file("."))
       // Test framework dependencies
       "org.scalatest" %% "scalatest" % "3.0.1" % Test,
       "com.novocode" % "junit-interface" % "0.11" % Test
+    ),
+    dependencyOverrides ++= Seq(
+      "org.seleniumhq.selenium" % "selenium-remote-driver" % "3.141.59" % Test
     ),
 
     PB.targets in Compile := Seq(

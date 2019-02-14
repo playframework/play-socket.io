@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
  */
+
 package play.socketio
 
 import ch.racic.selenium.drivers.PhantomJSDriverHelper
@@ -16,6 +17,7 @@ import play.utils.Colors
 
 import scala.collection.JavaConverters._
 
+@deprecated("Usage of PhantomJS is deprecated in Selenium, tests need to be rewritten", "14/02/2019")
 object RunSocketIOTests extends App {
 
   val port = 9123
@@ -31,8 +33,7 @@ object RunSocketIOTests extends App {
 
   capabilities.setCapability(
     PhantomJSDriverService.PHANTOMJS_EXECUTABLE_PATH_PROPERTY,
-    PhantomJSDriverHelper.executable64().getAbsolutePath
-  )
+    PhantomJSDriverHelper.executable64().getAbsolutePath)
   capabilities.setCapability(PhantomJSDriverService.PHANTOMJS_CLI_ARGS, Array("--webdriver-loglevel=WARN"))
 
   val driver = new PhantomJSDriver(capabilities)
@@ -68,8 +69,7 @@ object RunSocketIOTests extends App {
     var failCount = 0
 
     withCloseable(TestSocketIOServer.start(application, ServerConfig(
-      port = Some(port)
-    )))(_.stop()) { _ =>
+      port = Some(port))))(_.stop()) { _ =>
       driver.navigate().to(s"http://localhost:$port/index.html?dontrun=true&jsonp=true")
       driver.executeScript("runMocha();")
       consume(driver, System.currentTimeMillis())

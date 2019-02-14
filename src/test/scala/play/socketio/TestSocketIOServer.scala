@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
  */
+
 package play.socketio
 
 import play.core.server.{ AkkaHttpServer, ServerConfig }
@@ -29,8 +30,7 @@ object TestSocketIOServer {
             }).apply(rh).map(_.withHeaders("Cache-Control" -> "no-cache"))
           }
         }
-      }, config
-    )
+      }, config)
   }
 
   def main(testApplication: TestSocketIOApplication) = {

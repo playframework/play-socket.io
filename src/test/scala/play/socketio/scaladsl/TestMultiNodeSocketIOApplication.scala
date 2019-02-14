@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
  */
+
 package play.socketio.scaladsl
 
 import controllers.ExternalAssets
@@ -25,9 +26,7 @@ object TestMultiNodeSocketIOApplication extends TestSocketIOApplication {
         "akka.actor.provider" -> "remote",
         "akka.remote.enabled-transports" -> Seq("akka.remote.netty.tcp").asJava,
         "akka.remote.netty.tcp.hostname" -> "127.0.0.1",
-        "akka.remote.netty.tcp.port" -> backendAkkaPort.asInstanceOf[java.lang.Integer]
-      )
-    ).createComponents(routerBuilder).application
+        "akka.remote.netty.tcp.port" -> backendAkkaPort.asInstanceOf[java.lang.Integer])).createComponents(routerBuilder).application
 
     println("Started backend application.")
 
@@ -42,9 +41,7 @@ object TestMultiNodeSocketIOApplication extends TestSocketIOApplication {
         "play.engine-io.router-name" -> "backend-router",
         "akka.actor.deployment./backend-router.router" -> "round-robin-group",
         "akka.actor.deployment./backend-router.routees.paths" ->
-          Seq(s"akka.tcp://application@127.0.0.1:$backendAkkaPort/user/engine.io").asJava
-      )
-    ).createComponents(routerBuilder)
+          Seq(s"akka.tcp://application@127.0.0.1:$backendAkkaPort/user/engine.io").asJava)).createComponents(routerBuilder)
 
     frontendComponents.application
     println("Started frontend application.")

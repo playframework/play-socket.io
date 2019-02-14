@@ -1,12 +1,14 @@
 /*
  * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
  */
+
 package play.socketio.scaladsl
 
 import akka.stream.{ Materializer, OverflowStrategy }
 import akka.stream.scaladsl.{ BroadcastHub, Flow, Keep, Sink, Source }
 import controllers.{ AssetsComponents, ExternalAssets }
 import play.api._
+import play.api.ApplicationLoader.Context
 import play.api.libs.json.JsString
 import play.api.routing.Router
 import play.engineio.EngineIOController
@@ -38,10 +40,9 @@ class TestSocketIOScalaApplication(initialSettings: Map[String, AnyRef]) extends
 
   def createComponents(routerBuilder: (ExternalAssets, EngineIOController, ExecutionContext) => Router): BuiltInComponents = {
 
-    val components = new BuiltInComponentsFromContext(ApplicationLoader.createContext(
+    val components = new BuiltInComponentsFromContext(Context.create(
       Environment.simple(),
-      initialSettings = initialSettings
-    )) with SocketIOComponents with AssetsComponents {
+      initialSettings = initialSettings)) with SocketIOComponents with AssetsComponents {
 
       LoggerConfigurator(environment.classLoader).foreach(_.configure(environment))
       lazy val extAssets = new ExternalAssets(environment)(executionContext, fileMimeTypes)

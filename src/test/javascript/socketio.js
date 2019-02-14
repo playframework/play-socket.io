@@ -40,6 +40,9 @@ if (getQueryParameter("jsonp") === "true") {
 
 
 modes.forEach(function (mode) {
+  var connectionOpts = Object.assign({
+        forceNew: true
+      }, mode.opts)
 
   describe(mode.name + " socket.io support", function() {
     var socket;
@@ -47,15 +50,13 @@ modes.forEach(function (mode) {
 
     this.timeout(5000);
 
-    function connect(uri, opts) {
-      socket = manager.socket(uri, opts);
+    function connect(uri) {
+      socket = manager.socket(uri, connectionOpts);
       return socket;
     }
 
     beforeEach(function(done) {
-      socket = io(Object.assign({
-        forceNew: true
-      }, mode.opts));
+      socket = io(connectionOpts);
       manager = socket.io;
       // If we're using a protocol that upgrades, wait to upgrade.
       if (mode.expectUpgrade) {

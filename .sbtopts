@@ -1,0 +1,8 @@
+-J-Dfile.encoding=UTF8
+-J-Xss256m
+-J-Xms1G
+-J-Xmx1G
+-J-XX:ReservedCodeCacheSize=256M
+-J-XX:MaxMetaspaceSize=1G
+-J-server
+-Dsbt.log.format=true

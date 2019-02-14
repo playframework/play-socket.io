@@ -13,8 +13,7 @@ lazy val root = (project in file("."))
   .settings(
     organization := "com.lightbend.play",
     name := "play-socket-io",
-
-    scalacOptions ++= Seq("-feature", "-Xfatal-warnings"),
+    scalacOptions ++= Seq("-feature", "-Xfatal-warnings", "-target:jvm-1.8"),
     scalacOptions in (Compile, doc) := Nil,
     javacOptions ++= Seq("-Xlint"),
 

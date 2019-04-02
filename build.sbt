@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import de.heikoseeberger.sbtheader.HeaderPattern
 import play.core.PlayVersion.{current => playVersion}
-val AkkaVersion = "2.5.3"
+val AkkaVersion = "2.5.21"
 
 lazy val runPhantomjs = taskKey[Unit]("Run the phantomjs tests")
 

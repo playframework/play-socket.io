@@ -36,7 +36,7 @@ lazy val root = (project in file("."))
       "com.github.detro" % "ghostdriver" % "2.1.0" % Test,
 
       // Test framework dependencies
-      "org.scalatest" %% "scalatest" % "3.0.1" % Test,
+      "org.scalatest" %% "scalatest" % "3.0.7" % Test,
       "com.novocode" % "junit-interface" % "0.11" % Test
     ),
 

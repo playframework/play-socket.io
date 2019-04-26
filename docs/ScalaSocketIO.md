@@ -498,7 +498,7 @@ By default, Play socket.io will send the message of any exceptions encountered t
 ```scala
 socketIO.builder
   .withErrorHandler {
-    case _: NotAuthenticatedExcetpion => JsString("You are not authenticated")
+    case _: NotAuthenticatedException => JsString("You are not authenticated")
   }
 ```
 

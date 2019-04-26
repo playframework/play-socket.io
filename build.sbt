@@ -29,7 +29,7 @@ lazy val root = (project in file("."))
 
       // Test dependencies for Scala/Java dependency injection
       "com.typesafe.play" %% "play-guice" % playVersion % Test,
-      "com.softwaremill.macwire" %% "macros" % "2.3.0" % Test,
+      "com.softwaremill.macwire" %% "macros" % "2.3.2" % Test,
 
       // Test dependencies for running phantomjs
       "ch.racic.selenium" % "selenium-driver-helper-phantomjs" % "2.1.1" % Test,
@@ -103,7 +103,7 @@ lazy val scalaChat = (project in file("samples/scala/chat"))
     organization := "com.lightbend.play",
     scalaVersion := "2.12.2",
 
-    libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.3.0" % Provided
+    libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.3.2" % Provided
   )
 
 lazy val scalaMultiRoomChat = (project in file("samples/scala/multi-room-chat"))
@@ -114,7 +114,7 @@ lazy val scalaMultiRoomChat = (project in file("samples/scala/multi-room-chat"))
     organization := "com.lightbend.play",
     scalaVersion := "2.12.2",
 
-    libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.3.0" % Provided
+    libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.3.2" % Provided
   )
 
 lazy val scalaClusteredChat = (project in file("samples/scala/clustered-chat"))
@@ -126,7 +126,7 @@ lazy val scalaClusteredChat = (project in file("samples/scala/clustered-chat"))
     scalaVersion := "2.12.2",
 
     libraryDependencies ++= Seq(
-      "com.softwaremill.macwire" %% "macros" % "2.3.0" % Provided,
+      "com.softwaremill.macwire" %% "macros" % "2.3.2" % Provided,
       "com.typesafe.akka" %% "akka-cluster" % AkkaVersion,
       "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
     )

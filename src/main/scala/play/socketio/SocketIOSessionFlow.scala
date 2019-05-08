@@ -1,19 +1,28 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
  */
 package play.socketio
 
 import akka.NotUsed
 import akka.stream._
-import akka.stream.scaladsl.{ BidiFlow, BroadcastHub, Flow, Keep, MergeHub, Sink, Source }
+import akka.stream.scaladsl.BidiFlow
+import akka.stream.scaladsl.BroadcastHub
+import akka.stream.scaladsl.Flow
+import akka.stream.scaladsl.Keep
+import akka.stream.scaladsl.MergeHub
+import akka.stream.scaladsl.Sink
+import akka.stream.scaladsl.Source
 import akka.stream.stage._
 import akka.util.ByteString
-import play.api.libs.json.{ JsString, JsValue, Json }
+import play.api.libs.json.JsString
+import play.api.libs.json.JsValue
+import play.api.libs.json.Json
 import play.api.mvc.RequestHeader
 import play.engineio._
 import play.socketio.protocol._
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 import scala.concurrent.duration.Deadline
 import scala.util.control.NonFatal
 
@@ -32,30 +41,42 @@ object SocketIOSessionFlow {
    * @param connectToNamespaceCallback Factory for all other namespaces.
    */
   def createEngineIOSessionHandler[SessionData](
-    config:                     SocketIOConfig,
-    connectCallback:            (RequestHeader, String) => Future[SessionData],
-    errorHandler:               PartialFunction[Throwable, JsValue],
-    defaultNamespaceCallback:   SocketIOSession[SessionData] => Flow[SocketIOEvent, SocketIOEvent, _],
-    connectToNamespaceCallback: PartialFunction[(SocketIOSession[SessionData], String), Flow[SocketIOEvent, SocketIOEvent, _]]
+      config: SocketIOConfig,
+      connectCallback: (RequestHeader, String) => Future[SessionData],
+      errorHandler: PartialFunction[Throwable, JsValue],
+      defaultNamespaceCallback: SocketIOSession[SessionData] => Flow[SocketIOEvent, SocketIOEvent, _],
+      connectToNamespaceCallback: PartialFunction[
+        (SocketIOSession[SessionData], String),
+        Flow[SocketIOEvent, SocketIOEvent, _]
+      ]
   )(implicit ec: ExecutionContext, mat: Materializer): EngineIOSessionHandler = {
 
     new EngineIOSessionHandler {
       override def onConnect(request: RequestHeader, sid: String) = {
-        connectCallback(request, sid) map { sessionData =>
+        connectCallback(request, sid).map { sessionData =>
           val session = SocketIOSession(sid, sessionData)
 
-          val stage = new SocketIOSessionStage[SessionData](config, session, errorHandler, defaultNamespaceCallback,
-            connectToNamespaceCallback)
+          val stage = new SocketIOSessionStage[SessionData](
+            config,
+            session,
+            errorHandler,
+            defaultNamespaceCallback,
+            connectToNamespaceCallback
+          )
 
-          BidiFlow.fromGraph(stage).joinMat(Flow.fromSinkAndSourceMat(
-            BroadcastHub.sink[NamespacedSocketIOMessage],
-            MergeHub.source[NamespacedSocketIOMessage]
-          )(Keep.both)) {
-            case (receiver, (broadcastSource, mergeSink)) =>
-              val demuxMuxer = new NamespaceDemuxMuxer(broadcastSource, mergeSink)
-              receiver.provideNamespaceDemuxMuxer(demuxMuxer)
-              NotUsed
-          }
+          BidiFlow
+            .fromGraph(stage)
+            .joinMat(
+              Flow.fromSinkAndSourceMat(
+                BroadcastHub.sink[NamespacedSocketIOMessage],
+                MergeHub.source[NamespacedSocketIOMessage]
+              )(Keep.both)
+            ) {
+              case (receiver, (broadcastSource, mergeSink)) =>
+                val demuxMuxer = new NamespaceDemuxMuxer(broadcastSource, mergeSink)
+                receiver.provideNamespaceDemuxMuxer(demuxMuxer)
+                NotUsed
+            }
         }
       }
     }
@@ -65,34 +86,45 @@ object SocketIOSessionFlow {
 /**
  * Base class for all exceptions related to the socket.io session.
  */
-abstract class SocketIOSessionException(message: String, cause: Throwable) extends RuntimeException(message, cause, true, false) {
+abstract class SocketIOSessionException(message: String, cause: Throwable)
+    extends RuntimeException(message, cause, true, false) {
   def this(message: String) = this(message, null)
 }
 object SocketIOSessionException {
   private def ns(namespace: Option[String]) = namespace.getOrElse("/")
 
-  case class NamespaceNotFound(namespace: Option[String]) extends SocketIOSessionException("Namespace not found: " + ns(namespace))
-  case class NamespaceAlreadyConnected(namespace: Option[String]) extends SocketIOSessionException("Namespace already connected: " + ns(namespace))
-  case class NamespaceNotConnected(namespace: Option[String]) extends SocketIOSessionException("Namespace not connected: " + ns(namespace))
-  case class UnknownAckId(id: Long) extends SocketIOSessionException("Unknown ack id: " + id)
+  case class NamespaceNotFound(namespace: Option[String])
+      extends SocketIOSessionException("Namespace not found: " + ns(namespace))
+  case class NamespaceAlreadyConnected(namespace: Option[String])
+      extends SocketIOSessionException("Namespace already connected: " + ns(namespace))
+  case class NamespaceNotConnected(namespace: Option[String])
+      extends SocketIOSessionException("Namespace not connected: " + ns(namespace))
+  case class UnknownAckId(id: Long)                     extends SocketIOSessionException("Unknown ack id: " + id)
   case class UnexpectedPacketException(message: String) extends SocketIOSessionException(message)
-  case class ErrorFromClient(error: JsValue) extends SocketIOSessionException("Error from client: " + Json.stringify(error))
+  case class ErrorFromClient(error: JsValue)
+      extends SocketIOSessionException("Error from client: " + Json.stringify(error))
 }
 
 /**
  * Handles the connection to the EngineIO flow, adapting it to a flow of namespaced socket IO messages.
  */
 private class SocketIOSessionStage[SessionData](
-  config:                     SocketIOConfig,
-  session:                    SocketIOSession[SessionData],
-  errorHandler:               PartialFunction[Throwable, JsValue],
-  defaultNamespaceCallback:   SocketIOSession[SessionData] => Flow[SocketIOEvent, SocketIOEvent, _],
-  connectToNamespaceCallback: PartialFunction[(SocketIOSession[SessionData], String), Flow[SocketIOEvent, SocketIOEvent, _]]
-) extends GraphStageWithMaterializedValue[BidiShape[EngineIOMessage, NamespacedSocketIOMessage, NamespacedSocketIOMessage, Seq[EngineIOMessage]], DemuxMuxReceiver] {
+    config: SocketIOConfig,
+    session: SocketIOSession[SessionData],
+    errorHandler: PartialFunction[Throwable, JsValue],
+    defaultNamespaceCallback: SocketIOSession[SessionData] => Flow[SocketIOEvent, SocketIOEvent, _],
+    connectToNamespaceCallback: PartialFunction[
+      (SocketIOSession[SessionData], String),
+      Flow[SocketIOEvent, SocketIOEvent, _]
+    ]
+) extends GraphStageWithMaterializedValue[
+      BidiShape[EngineIOMessage, NamespacedSocketIOMessage, NamespacedSocketIOMessage, Seq[EngineIOMessage]],
+      DemuxMuxReceiver
+    ] {
 
-  val engineIOIn = Inlet[EngineIOMessage]("EngineIOIn")
+  val engineIOIn  = Inlet[EngineIOMessage]("EngineIOIn")
   val socketIOOut = Outlet[NamespacedSocketIOMessage]("SocketIOOut")
-  val socketIOIn = Inlet[NamespacedSocketIOMessage]("SocketIOIn")
+  val socketIOIn  = Inlet[NamespacedSocketIOMessage]("SocketIOIn")
   val engineIOOut = Outlet[Seq[EngineIOMessage]]("EngineIOOut")
 
   override def shape = BidiShape(engineIOIn, socketIOOut, socketIOIn, engineIOOut)
@@ -132,14 +164,14 @@ private class SocketIOSessionStage[SessionData](
       // Binary packet tracking, since a binary socket.io packet gets fragmented across many
       // engine.io packets
       var currentBinaryPacket: Option[SocketIOPacket] = None
-      var currentBinaryPacketFragments = IndexedSeq.empty[ByteString]
-      var currentBinaryPacketRemaining = 0
+      var currentBinaryPacketFragments                = IndexedSeq.empty[ByteString]
+      var currentBinaryPacketRemaining                = 0
 
       // The active namespaces
       var activeNamespaces = Set.empty[Option[String]]
 
       // Counter for generating ACK ids.
-      private var ackIdCounter = 0l
+      private var ackIdCounter = 0L
       // The ack functions that we've sent to the client. Each function is identified by a unique id
       // to the session, so when the client sends the ack, it includes that id, we can then load the
       // function and invoke it. There is also a deadline, since the client may choose not to ack,
@@ -155,7 +187,9 @@ private class SocketIOSessionStage[SessionData](
             case (_: TextEngineIOMessage, Some(_)) =>
               pushError(
                 None,
-                UnexpectedPacketException("Received a text engine.io message while waiting for a binary message to complete a socket.io binary packet")
+                UnexpectedPacketException(
+                  "Received a text engine.io message while waiting for a binary message to complete a socket.io binary packet"
+                )
               )
 
             case (_: BinaryEngineIOMessage, None) =>
@@ -185,19 +219,27 @@ private class SocketIOSessionStage[SessionData](
               if (currentBinaryPacketRemaining == 0) {
                 binaryPacket match {
                   case SocketIOBinaryEventPacket(namespace, data, id) =>
-                    handleSocketIOPacket(SocketIOBinaryEventPacket(
-                      namespace,
-                      SocketIOPacket.replacePlaceholders(data, currentBinaryPacketFragments), id
-                    ))
+                    handleSocketIOPacket(
+                      SocketIOBinaryEventPacket(
+                        namespace,
+                        SocketIOPacket.replacePlaceholders(data, currentBinaryPacketFragments),
+                        id
+                      )
+                    )
                   case SocketIOBinaryAckPacket(namespace, data, id) =>
-                    handleSocketIOPacket(SocketIOBinaryAckPacket(
-                      namespace,
-                      SocketIOPacket.replacePlaceholders(data, currentBinaryPacketFragments), id
-                    ))
+                    handleSocketIOPacket(
+                      SocketIOBinaryAckPacket(
+                        namespace,
+                        SocketIOPacket.replacePlaceholders(data, currentBinaryPacketFragments),
+                        id
+                      )
+                    )
                   case _ =>
                     pushError(
                       None,
-                      UnexpectedPacketException("Received unexpected non binary fragmented socket.io packet with binary fragments")
+                      UnexpectedPacketException(
+                        "Received unexpected non binary fragmented socket.io packet with binary fragments"
+                      )
                     )
                 }
                 currentBinaryPacketFragments = IndexedSeq.empty
@@ -251,7 +293,6 @@ private class SocketIOSessionStage[SessionData](
               }
 
             case NamespacedSocketIOEvent(namespace, event) =>
-
               val maybeAckId = event.ack.map { ackFunction =>
                 val ackId = ackIdCounter
                 ackFunctions += (ackIdCounter -> (config.ackDeadline.fromNow, ackFunction))
@@ -290,7 +331,6 @@ private class SocketIOSessionStage[SessionData](
       def handleSocketIOPacket(packet: SocketIOPacket): Unit = packet match {
 
         case packet @ SocketIOConnectPacket(nsWithQuery) =>
-
           val namespace = nsWithQuery.map(_.takeWhile(_ != '?'))
 
           if (activeNamespaces(namespace)) {
@@ -304,8 +344,9 @@ private class SocketIOSessionStage[SessionData](
                   connectNamespace(
                     namespace,
                     connectToNamespaceCallback.applyOrElse(
-                      (session, ns),
-                      { _: (SocketIOSession[SessionData], String) => throw NamespaceNotFound(namespace) }
+                      (session, ns), { _: (SocketIOSession[SessionData], String) =>
+                        throw NamespaceNotFound(namespace)
+                      }
                     )
                   )
               }
@@ -333,7 +374,10 @@ private class SocketIOSessionStage[SessionData](
 
             val ack = maybeAckId.map(ackId => new FlowCallbackAck(packetCallback.invoke, namespace, ackId))
 
-            push(socketIOOut, NamespacedSocketIOEvent(namespace, SocketIOEvent(eventName, data.drop(1).map(Left.apply), ack)))
+            push(
+              socketIOOut,
+              NamespacedSocketIOEvent(namespace, SocketIOEvent(eventName, data.drop(1).map(Left.apply), ack))
+            )
           }
 
         case SocketIOAckPacket(namespace, args, ackId) =>
@@ -355,7 +399,7 @@ private class SocketIOSessionStage[SessionData](
           validateNamespace(namespace) {
             val eventName = (for {
               firstArg <- data.headOption
-              asJson <- firstArg.left.toOption
+              asJson   <- firstArg.left.toOption
               asString <- asJson.asOpt[String]
             } yield asString).getOrElse("")
 
@@ -425,13 +469,13 @@ private class SocketIOSessionStage[SessionData](
  * This handles adding namespaces into the demux/mux flow.
  */
 private class NamespaceDemuxMuxer(
-  broadcastSource: Source[NamespacedSocketIOMessage, NotUsed],
-  mergeSink:       Sink[NamespacedSocketIOMessage, NotUsed]
+    broadcastSource: Source[NamespacedSocketIOMessage, NotUsed],
+    mergeSink: Sink[NamespacedSocketIOMessage, NotUsed]
 )(implicit materializer: Materializer) {
 
   def addNamespace(namespace: Option[String], flow: Flow[SocketIOEvent, SocketIOEvent, _]): Unit = {
     broadcastSource
-      // Demux to only handle events for this namespace
+    // Demux to only handle events for this namespace
       .filter(_.namespace == namespace)
       // Take until we get a disconnect message, either terminating or propagating errors to th eflow
       .takeWhile {
@@ -471,10 +515,13 @@ private trait DemuxMuxReceiver {
 private sealed trait NamespacedSocketIOMessage {
   def namespace: Option[String]
 }
-private case class NamespacedSocketIOEvent(namespace: Option[String], event: SocketIOEvent) extends NamespacedSocketIOMessage
-private case class DisconnectSocketIONamespace(namespace: Option[String], error: Option[Throwable]) extends NamespacedSocketIOMessage
+private case class NamespacedSocketIOEvent(namespace: Option[String], event: SocketIOEvent)
+    extends NamespacedSocketIOMessage
+private case class DisconnectSocketIONamespace(namespace: Option[String], error: Option[Throwable])
+    extends NamespacedSocketIOMessage
 
-private class FlowCallbackAck(callback: SocketIOPacket => Unit, namespace: Option[String], id: Long) extends SocketIOEventAck {
+private class FlowCallbackAck(callback: SocketIOPacket => Unit, namespace: Option[String], id: Long)
+    extends SocketIOEventAck {
   override def apply(args: Seq[Either[JsValue, ByteString]]) = {
     if (args.forall(_.isLeft)) {
       callback(SocketIOAckPacket(namespace, args.collect {

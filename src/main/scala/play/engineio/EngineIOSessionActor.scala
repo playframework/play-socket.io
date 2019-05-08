@@ -1,13 +1,19 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
  */
 package play.engineio
 
-import akka.actor.{ Actor, ActorLogging, ActorRef, DeadLetterSuppression, Props, Status }
+import akka.actor.Actor
+import akka.actor.ActorLogging
+import akka.actor.ActorRef
+import akka.actor.DeadLetterSuppression
+import akka.actor.Props
+import akka.actor.Status
 import akka.pattern.pipe
 import akka.stream._
 import akka.stream.scaladsl._
-import akka.{ Done, NotUsed }
+import akka.Done
+import akka.NotUsed
 import play.api.mvc.RequestHeader
 import play.engineio.protocol.EngineIOTransport.Polling
 import play.engineio.protocol._
@@ -47,8 +53,8 @@ object EngineIOSessionActor {
   case object Tick extends DeadLetterSuppression
 
   def props[SessionData](
-    config:  EngineIOConfig,
-    handler: EngineIOSessionHandler
+      config: EngineIOConfig,
+      handler: EngineIOSessionHandler
   )(implicit mat: Materializer) = Props {
 
     new EngineIOSessionActor[SessionData](config, handler)
@@ -59,9 +65,11 @@ object EngineIOSessionActor {
  * Actor that provides engine.io sessions.
  */
 class EngineIOSessionActor[SessionData](
-  config:  EngineIOConfig,
-  handler: EngineIOSessionHandler
-)(implicit mat: Materializer) extends Actor with ActorLogging {
+    config: EngineIOConfig,
+    handler: EngineIOSessionHandler
+)(implicit mat: Materializer)
+    extends Actor
+    with ActorLogging {
 
   import context.dispatcher
 
@@ -159,7 +167,8 @@ class EngineIOSessionActor[SessionData](
 
   def tryConnect(sid: String, request: RequestHeader, requestId: String) = {
     try {
-      handler.onConnect(request, sid)
+      handler
+        .onConnect(request, sid)
         .map(flow => Connected(flow, requestId))
         .recover {
           case e => ConnectionRefused(e)
@@ -177,11 +186,22 @@ class EngineIOSessionActor[SessionData](
 
     case Connected(flow, requestId) =>
       log.debug("{} - Connection successful", sid)
-      sender ! Packets(sid, activeTransport, Seq(EngineIOPacket(
-        EngineIOPacketType.Open,
-        EngineIOOpenMessage(sid, config.transports.filterNot(_ == activeTransport), pingInterval = config.pingInterval,
-          pingTimeout = config.pingTimeout)
-      )), requestId)
+      sender ! Packets(
+        sid,
+        activeTransport,
+        Seq(
+          EngineIOPacket(
+            EngineIOPacketType.Open,
+            EngineIOOpenMessage(
+              sid,
+              config.transports.filterNot(_ == activeTransport),
+              pingInterval = config.pingInterval,
+              pingTimeout = config.pingTimeout
+            )
+          )
+        ),
+        requestId
+      )
 
       doConnect(flow)
 
@@ -215,7 +235,8 @@ class EngineIOSessionActor[SessionData](
     }
 
     // Set up flow
-    val (sourceQ, sinkQ) = Source.queue[Seq[EngineIOMessage]](1, OverflowStrategy.backpressure)
+    val (sourceQ, sinkQ) = Source
+      .queue[Seq[EngineIOMessage]](1, OverflowStrategy.backpressure)
       .expand(_.iterator)
       .via(flow)
       .batch(4, messagesToPackets)(_ ++ messagesToPackets(_))
@@ -235,12 +256,16 @@ class EngineIOSessionActor[SessionData](
       tick()
 
     case Retrieve(_, transport, requestId) =>
-
       // First, if there's already a requester, then replace it
       retrieveRequesters.get(transport) match {
 
         case Some(RetrieveRequester(existing, existingRequestId)) =>
-          debug(requestId, transport, "Retrieve with existing requester: {}, telling request to go away", existingRequestId)
+          debug(
+            requestId,
+            transport,
+            "Retrieve with existing requester: {}, telling request to go away",
+            existingRequestId
+          )
           existing ! Close(sid, transport, requestId)
           storeRequester(sender, requestId, transport)
 
@@ -295,7 +320,7 @@ class EngineIOSessionActor[SessionData](
       currentlyPushingMessages = false
 
       if (messagesReceived.nonEmpty) {
-        sourceQueue.offer(messagesReceived).map(_ => MessagesPushed) pipeTo self
+        sourceQueue.offer(messagesReceived).map(_ => MessagesPushed).pipeTo(self)
         currentlyPushingMessages = true
         messagesReceivedSenders.foreach(_ ! Done)
         messagesReceivedSenders = Set.empty
@@ -310,11 +335,14 @@ class EngineIOSessionActor[SessionData](
 
   }
 
-  private def handleIncomingEngineIOPackets(transport: EngineIOTransport, packets: Seq[EngineIOPacket], requestId: String) = {
+  private def handleIncomingEngineIOPackets(
+      transport: EngineIOTransport,
+      packets: Seq[EngineIOPacket],
+      requestId: String
+  ) = {
     var messagesToPush = Seq.empty[EngineIOMessage]
 
     packets.foreach { packet =>
-
       packet.typeId match {
         case EngineIOPacketType.Message =>
           packet match {
@@ -355,7 +383,7 @@ class EngineIOSessionActor[SessionData](
         messagesReceived ++= messagesToPush
         messagesReceivedSenders += sender
       } else {
-        sourceQueue.offer(messagesToPush).map(_ => MessagesPushed) pipeTo self
+        sourceQueue.offer(messagesToPush).map(_ => MessagesPushed).pipeTo(self)
         currentlyPushingMessages = true
         sender ! Done
       }
@@ -368,8 +396,13 @@ class EngineIOSessionActor[SessionData](
     if (data == "probe" && activeTransport == Polling) {
       upgradingFromPollingHack = true
       retrieveRequesters.get(Polling).foreach { requester =>
-        debug(requestId, transport, "Telling {}@{} to go away to work around engine.io upgrade race condition",
-          requester.requestId, Polling)
+        debug(
+          requestId,
+          transport,
+          "Telling {}@{} to go away to work around engine.io upgrade race condition",
+          requester.requestId,
+          Polling
+        )
         requester.requester ! Packets(sid, Polling, Seq(Utf8EngineIOPacket(EngineIOPacketType.Noop, "")), requestId)
         retrieveRequesters -= Polling
       }
@@ -396,10 +429,13 @@ class EngineIOSessionActor[SessionData](
 
   private def requestMorePackets() = {
     if (!currentlyPullingPackets) {
-      sinkQueue.pull().map {
-        case Some(packets) => PulledPackets(packets)
-        case None          => PulledPackets(Nil)
-      } pipeTo self
+      sinkQueue
+        .pull()
+        .map {
+          case Some(packets) => PulledPackets(packets)
+          case None          => PulledPackets(Nil)
+        }
+        .pipeTo(self)
       currentlyPullingPackets = true
     }
   }
@@ -435,4 +471,3 @@ class EngineIOSessionActor[SessionData](
 }
 
 private case class RetrieveRequester(requester: ActorRef, requestId: String)
-

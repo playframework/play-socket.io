@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
  */
 package play.socketio
 
 import play.api.Configuration
 
 import scala.concurrent.duration._
-import javax.inject.{ Inject, Provider, Singleton }
+import javax.inject.Inject
+import javax.inject.Provider
+import javax.inject.Singleton
 
 /**
  * Configuration for socket.io.
@@ -14,8 +16,8 @@ import javax.inject.{ Inject, Provider, Singleton }
  * See `reference.conf` for in depth documentation.
  */
 case class SocketIOConfig(
-  ackDeadline:     FiniteDuration = 60.seconds,
-  ackCleanupEvery: Int            = 10
+    ackDeadline: FiniteDuration = 60.seconds,
+    ackCleanupEvery: Int = 10
 )
 
 object SocketIOConfig {
@@ -29,7 +31,6 @@ object SocketIOConfig {
 }
 
 @Singleton
-class SocketIOConfigProvider @Inject() (configuration: Configuration) extends Provider[SocketIOConfig] {
+class SocketIOConfigProvider @Inject()(configuration: Configuration) extends Provider[SocketIOConfig] {
   override lazy val get: SocketIOConfig = SocketIOConfig.fromConfiguration(configuration)
 }
-

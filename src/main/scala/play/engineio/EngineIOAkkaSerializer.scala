@@ -1,10 +1,11 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
  */
 package play.engineio
 
 import akka.actor.ExtendedActorSystem
-import akka.serialization.{ BaseSerializer, SerializerWithStringManifest }
+import akka.serialization.BaseSerializer
+import akka.serialization.SerializerWithStringManifest
 import akka.util.{ ByteString => AByteString }
 import com.google.protobuf.{ ByteString => PByteString }
 import play.engineio.EngineIOManagerActor._
@@ -16,13 +17,13 @@ import play.engineio.protobuf.{ engineio => p }
  */
 class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends SerializerWithStringManifest with BaseSerializer {
 
-  private val ConnectManifest = "A"
-  private val PacketsManifest = "B"
-  private val RetrieveManifest = "C"
-  private val CloseManifest = "D"
+  private val ConnectManifest                   = "A"
+  private val PacketsManifest                   = "B"
+  private val RetrieveManifest                  = "C"
+  private val CloseManifest                     = "D"
   private val EngineIOEncodingExceptionManifest = "E"
-  private val UnknownSessionIdManifest = "F"
-  private val SessionClosedManifest = "G"
+  private val UnknownSessionIdManifest          = "F"
+  private val SessionClosedManifest             = "G"
 
   override def manifest(obj: AnyRef) = obj match {
     case _: Connect                   => ConnectManifest
@@ -40,8 +41,15 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
     val protobufObject = obj match {
 
       case Connect(sid, transport, request, requestId) =>
-        p.Connect(sid, encodeTransport(transport), requestId, request.method, request.uri, request.version,
-          request.headers.headers.map(header => p.HttpHeader(header._1, header._2)))
+        p.Connect(
+          sid,
+          encodeTransport(transport),
+          requestId,
+          request.method,
+          request.uri,
+          request.version,
+          request.headers.headers.map(header => p.HttpHeader(header._1, header._2))
+        )
 
       case Packets(sid, transport, packets, requestId) =>
         p.Packets(sid, encodeTransport(transport), packets.map(encodePacket), requestId)
@@ -71,14 +79,21 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
   override def fromBinary(bytes: Array[Byte], manifest: String) = manifest match {
     case `ConnectManifest` =>
       val connect = p.Connect.parseFrom(bytes)
-      Connect(connect.sid, decodeTransport(connect.transport),
-        new DeserializedRequestHeader(connect.method, connect.uri, connect.version,
-          connect.headers.map(h => (h.name, h.value))), connect.requestId)
+      Connect(
+        connect.sid,
+        decodeTransport(connect.transport),
+        new DeserializedRequestHeader(
+          connect.method,
+          connect.uri,
+          connect.version,
+          connect.headers.map(h => (h.name, h.value))
+        ),
+        connect.requestId
+      )
 
     case `PacketsManifest` =>
       val packets = p.Packets.parseFrom(bytes)
-      Packets(packets.sid, decodeTransport(packets.transport), packets.packets.map(decodePacket),
-        packets.requestId)
+      Packets(packets.sid, decodeTransport(packets.transport), packets.packets.map(decodePacket), packets.requestId)
 
     case `RetrieveManifest` =>
       val retrieve = p.Retrieve.parseFrom(bytes)
@@ -136,9 +151,12 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
   }
 
   private def encodePacket(packet: EngineIOPacket): p.Packet = {
-    p.Packet(p.PacketType.fromValue(packet.typeId.id), packet match {
-      case Utf8EngineIOPacket(_, text)    => p.Packet.Payload.Text(text)
-      case BinaryEngineIOPacket(_, bytes) => p.Packet.Payload.Binary(encodeBytes(bytes))
-    })
+    p.Packet(
+      p.PacketType.fromValue(packet.typeId.id),
+      packet match {
+        case Utf8EngineIOPacket(_, text)    => p.Packet.Payload.Text(text)
+        case BinaryEngineIOPacket(_, bytes) => p.Packet.Payload.Binary(encodeBytes(bytes))
+      }
+    )
   }
 }

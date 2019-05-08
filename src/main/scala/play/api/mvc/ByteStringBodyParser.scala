@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
  */
 package play.api.mvc
 
@@ -14,16 +14,20 @@ import akka.util.ByteString
 class ByteStringBodyParser(parsers: PlayBodyParsers) {
 
   private object myParsers extends PlayBodyParsers {
-    override private[play] implicit def materializer = parsers.materializer
-    override def config = parsers.config
-    override private[play] def errorHandler = parsers.errorHandler
-    override private[play] def temporaryFileCreator = parsers.temporaryFileCreator
+    private[play] implicit override def materializer = parsers.materializer
+    override def config                              = parsers.config
+    private[play] override def errorHandler          = parsers.errorHandler
+    private[play] override def temporaryFileCreator  = parsers.temporaryFileCreator
 
     // Overridden to make public
-    override def tolerantBodyParser[A](name: String, maxLength: Long, errorMessage: String)(parser: (RequestHeader, ByteString) => A) =
+    override def tolerantBodyParser[A](name: String, maxLength: Long, errorMessage: String)(
+        parser: (RequestHeader, ByteString) => A
+    ) =
       super.tolerantBodyParser(name, maxLength, errorMessage)(parser)
   }
 
   def byteString: BodyParser[ByteString] =
-    myParsers.tolerantBodyParser("byteString", myParsers.config.maxMemoryBuffer, "Error decoding byte string body")((_, bytes) => bytes)
+    myParsers.tolerantBodyParser("byteString", myParsers.config.maxMemoryBuffer, "Error decoding byte string body")(
+      (_, bytes) => bytes
+    )
 }

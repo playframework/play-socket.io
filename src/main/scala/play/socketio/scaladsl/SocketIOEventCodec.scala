@@ -1,12 +1,16 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
  */
 package play.socketio.scaladsl
 
 import akka.NotUsed
 import akka.util.ByteString
-import play.api.libs.json.{ JsValue, Json, Reads, Writes }
-import play.socketio.{ SocketIOEvent, SocketIOEventAck }
+import play.api.libs.json.JsValue
+import play.api.libs.json.Json
+import play.api.libs.json.Reads
+import play.api.libs.json.Writes
+import play.socketio.SocketIOEvent
+import play.socketio.SocketIOEventAck
 
 import scala.language.existentials
 
@@ -57,10 +61,13 @@ object SocketIOEventCodec {
   def decodeByName[T](decoders: PartialFunction[String, SocketIOEventDecoder[T]]): SocketIOEventsDecoder[T] =
     new PartialFunction[SocketIOEvent, T] {
       override def isDefinedAt(event: SocketIOEvent) = decoders.isDefinedAt(event.name)
-      override def apply(event: SocketIOEvent) = decoders(event.name)(event)
+      override def apply(event: SocketIOEvent)       = decoders(event.name)(event)
       override def applyOrElse[A1 <: SocketIOEvent, B1 >: T](event: A1, default: (A1) => B1) = {
-        decoders.andThen(decoder => decoder.apply(event))
-          .applyOrElse(event.name, { _: String => default(event) })
+        decoders
+          .andThen(decoder => decoder.apply(event))
+          .applyOrElse(event.name, { _: String =>
+            default(event)
+          })
       }
     }
 
@@ -95,7 +102,9 @@ object SocketIOEventCodec {
    * }
    * ```
    */
-  def encodeByType[T](encoders: PartialFunction[T, (String, SocketIOEventEncoder[_ <: T])]): SocketIOEventsEncoder[T] = {
+  def encodeByType[T](
+      encoders: PartialFunction[T, (String, SocketIOEventEncoder[_ <: T])]
+  ): SocketIOEventsEncoder[T] = {
     new PartialFunction[T, SocketIOEvent] {
       override def isDefinedAt(t: T) = encoders.isDefinedAt(t)
       override def apply(t: T) = {
@@ -103,9 +112,11 @@ object SocketIOEventCodec {
         encoder.asInstanceOf[Function[Any, SocketIOEvent]](t).copy(name = name)
       }
       override def applyOrElse[T1 <: T, B1 >: SocketIOEvent](t: T1, default: (T1) => B1) = {
-        encoders.andThen {
-          case (name, encoder) => encoder.asInstanceOf[Function[Any, SocketIOEvent]](t).copy(name = name)
-        }.applyOrElse(t, default)
+        encoders
+          .andThen {
+            case (name, encoder) => encoder.asInstanceOf[Function[Any, SocketIOEvent]](t).copy(name = name)
+          }
+          .applyOrElse(t, default)
       }
     }
   }
@@ -161,11 +172,12 @@ object SocketIOEventCodec {
      *
      * If no ack is supplied by the client, this decoder will fail.
      */
-    def withAckEncoder[A](encoder: SocketIOArgsEncoder[A]): SocketIOEventCodec.SocketIOEventDecoder[(T, A => Unit)] = { event =>
-      val ack = event.ack.getOrElse {
-        throw new SocketIOEventCodecException("Expected ack")
-      }
-      (first(event), ack.compose(encoder.encodeArgs))
+    def withAckEncoder[A](encoder: SocketIOArgsEncoder[A]): SocketIOEventCodec.SocketIOEventDecoder[(T, A => Unit)] = {
+      event =>
+        val ack = event.ack.getOrElse {
+          throw new SocketIOEventCodecException("Expected ack")
+        }
+        (first(event), ack.compose(encoder.encodeArgs))
     }
 
     /**
@@ -177,7 +189,9 @@ object SocketIOEventCodec {
      * The returned value is a tuple of the argument decoded by this decoder, and the ack function, if supplied by the
      * client.
      */
-    def withMaybeAckEncoder[A](encoder: SocketIOArgsEncoder[A]): SocketIOEventCodec.SocketIOEventDecoder[(T, Option[A => Unit])] = { event =>
+    def withMaybeAckEncoder[A](
+        encoder: SocketIOArgsEncoder[A]
+    ): SocketIOEventCodec.SocketIOEventDecoder[(T, Option[A => Unit])] = { event =>
       (first(event), event.ack.map { ack =>
         ack.compose(encoder.encodeArgs)
       })
@@ -221,7 +235,9 @@ object SocketIOEventCodec {
      *
      * If no ack is supplied by the client, this decoder will fail.
      */
-    def withAckEncoder[A](encoder: SocketIOArgsEncoder[A]): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, A => Unit)] = { event =>
+    def withAckEncoder[A](
+        encoder: SocketIOArgsEncoder[A]
+    ): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, A => Unit)] = { event =>
       val ack = event.ack.getOrElse {
         throw new SocketIOEventCodecException("Expected ack")
       }
@@ -238,7 +254,9 @@ object SocketIOEventCodec {
      * The returned value is a tuple of the arguments decoded by this decoder, and the ack function, if supplied by the
      * client.
      */
-    def withMaybeAckEncoder[A](encoder: SocketIOArgsEncoder[A]): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, Option[A => Unit])] = { event =>
+    def withMaybeAckEncoder[A](
+        encoder: SocketIOArgsEncoder[A]
+    ): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, Option[A => Unit])] = { event =>
       val args = init(event)
       (args._1, args._2, event.ack.map { ack =>
         ack.compose(encoder.encodeArgs)
@@ -283,7 +301,9 @@ object SocketIOEventCodec {
      *
      * If no ack is supplied by the client, this decoder will fail.
      */
-    def withAckEncoder[A](encoder: SocketIOArgsEncoder[A]): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, T3, A => Unit)] = { event =>
+    def withAckEncoder[A](
+        encoder: SocketIOArgsEncoder[A]
+    ): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, T3, A => Unit)] = { event =>
       val ack = event.ack.getOrElse {
         throw new SocketIOEventCodecException("Expected ack")
       }
@@ -300,7 +320,9 @@ object SocketIOEventCodec {
      * The returned value is a tuple of the arguments decoded by this decoder, and the ack function, if supplied by the
      * client.
      */
-    def withMaybeAckEncoder[A](encoder: SocketIOArgsEncoder[A]): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, T3, Option[A => Unit])] = { event =>
+    def withMaybeAckEncoder[A](
+        encoder: SocketIOArgsEncoder[A]
+    ): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, T3, Option[A => Unit])] = { event =>
       val args = init(event)
       (args._1, args._2, args._3, event.ack.map { ack =>
         ack.compose(encoder.encodeArgs)
@@ -341,7 +363,10 @@ object SocketIOEventCodec {
      */
     def withAckDecoder[A](decoder: SocketIOArgsDecoder[A]): SocketIOEventCodec.SocketIOEventEncoder[(T, A => Unit)] = {
       case (t, ack) =>
-        SocketIOEvent.unnamed(Seq(first.encodeArg(t)), Some(SocketIOEventAck.fromScala(ack.compose(decoder.decodeArgs))))
+        SocketIOEvent.unnamed(
+          Seq(first.encodeArg(t)),
+          Some(SocketIOEventAck.fromScala(ack.compose(decoder.decodeArgs)))
+        )
     }
   }
 
@@ -378,9 +403,14 @@ object SocketIOEventCodec {
      *
      * The encoded value is a tuple of the arguments to be encoded by this encoder, and the ack function.
      */
-    def withAckDecoder[A](decoder: SocketIOArgsDecoder[A]): SocketIOEventCodec.SocketIOEventEncoder[(T1, T2, A => Unit)] = {
+    def withAckDecoder[A](
+        decoder: SocketIOArgsDecoder[A]
+    ): SocketIOEventCodec.SocketIOEventEncoder[(T1, T2, A => Unit)] = {
       case (t1, t2, ack) =>
-        SocketIOEvent.unnamed(init.encodeArgs((t1, t2)), Some(SocketIOEventAck.fromScala(ack.compose(decoder.decodeArgs))))
+        SocketIOEvent.unnamed(
+          init.encodeArgs((t1, t2)),
+          Some(SocketIOEventAck.fromScala(ack.compose(decoder.decodeArgs)))
+        )
     }
   }
 
@@ -417,9 +447,14 @@ object SocketIOEventCodec {
      *
      * The encoded value is a tuple of the arguments to be encoded by this encoder, and the ack function.
      */
-    def withAckDecoder[A](decoder: SocketIOArgsDecoder[A]): SocketIOEventCodec.SocketIOEventEncoder[(T1, T2, T3, A => Unit)] = {
+    def withAckDecoder[A](
+        decoder: SocketIOArgsDecoder[A]
+    ): SocketIOEventCodec.SocketIOEventEncoder[(T1, T2, T3, A => Unit)] = {
       case (t1, t2, t3, ack) =>
-        SocketIOEvent.unnamed(init.encodeArgs((t1, t2, t3)), Some(SocketIOEventAck.fromScala(ack.compose(decoder.decodeArgs))))
+        SocketIOEvent.unnamed(
+          init.encodeArgs((t1, t2, t3)),
+          Some(SocketIOEventAck.fromScala(ack.compose(decoder.decodeArgs)))
+        )
     }
   }
 }

@@ -11,90 +11,53 @@ playBuildRepoName in ThisBuild := "play-socket.io"
 sonatypeProfileName in ThisBuild := "com.lightbend"
 
 lazy val root = (project in file("."))
-  .enablePlugins(PlayReleaseBase, PlayLibrary, AutomateHeaderPlugin)
+  .enablePlugins(PlayReleaseBase, PlayLibrary)
   .settings(
     organization := "com.lightbend.play",
     name := "play-socket-io",
-
     scalacOptions ++= Seq("-feature", "-Xfatal-warnings"),
     scalacOptions in (Compile, doc) := Nil,
     javacOptions ++= Seq("-Xlint"),
-
     libraryDependencies ++= Seq(
       // Production dependencies
-      "com.typesafe.play" %% "play" % playVersion,
+      "com.typesafe.play" %% "play"        % playVersion,
       "com.typesafe.akka" %% "akka-remote" % AkkaVersion,
-
       // Test dependencies for running a Play server
       "com.typesafe.play" %% "play-akka-http-server" % playVersion % Test,
-      "com.typesafe.play" %% "play-logback" % playVersion % Test,
-
+      "com.typesafe.play" %% "play-logback"          % playVersion % Test,
       // Test dependencies for Scala/Java dependency injection
-      "com.typesafe.play" %% "play-guice" % playVersion % Test,
-      "com.softwaremill.macwire" %% "macros" % "2.3.0" % Test,
-
+      "com.typesafe.play"        %% "play-guice" % playVersion % Test,
+      "com.softwaremill.macwire" %% "macros"     % "2.3.0"     % Test,
       // Test dependencies for running phantomjs
       "org.seleniumhq.selenium" % "selenium-chrome-driver" % "3.141.59",
 
       // Test framework dependencies
-      "org.scalatest" %% "scalatest" % "3.0.7" % Test,
-      "com.novocode" % "junit-interface" % "0.11" % Test
+      "org.scalatest" %% "scalatest"      % "3.0.7" % Test,
+      "com.novocode"  % "junit-interface" % "0.11"  % Test
     ),
-
     PB.targets in Compile := Seq(
       scalapb.gen() -> (sourceManaged in Compile).value
     ),
-
     fork in Test := true,
     connectInput in (Test, run) := true,
 
     runChromeWebDriver := {
       (runMain in Test).toTask(" play.socketio.RunSocketIOTests").value
     },
-
     TaskKey[Unit]("runJavaServer") :=
       (runMain in Test).toTask(" play.socketio.javadsl.TestSocketIOJavaApplication").value,
     TaskKey[Unit]("runScalaServer") :=
       (runMain in Test).toTask(" play.socketio.scaladsl.TestSocketIOScalaApplication").value,
     TaskKey[Unit]("runMultiNodeServer") :=
       (runMain in Test).toTask(" play.socketio.scaladsl.TestMultiNodeSocketIOApplication").value,
-
     test in Test := {
       (test in Test).value
       runChromeWebDriver.value
     },
-
-    resolvers += "jitpack" at "https://jitpack.io",
-
-    headers := headers.value ++ Map(
-      "scala" -> (
-        HeaderPattern.cStyleBlockComment,
-        """|/*
-           | * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
-           | */
-           |""".stripMargin
-      ),
-      "java" -> (
-        HeaderPattern.cStyleBlockComment,
-        """|/*
-           | * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
-           | */
-           |""".stripMargin
-      )
-    ),
-
-    ScalariformKeys.preferences in Compile  := formattingPreferences,
-    ScalariformKeys.preferences in Test     := formattingPreferences
+    resolvers += "jitpack".at("https://jitpack.io"),
+    headerLicense := Some(HeaderLicense.Custom("Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>")),
+    headerEmptyLine := false
   )
-
-def formattingPreferences = {
-  import scalariform.formatter.preferences._
-  FormattingPreferences()
-    .setPreference(RewriteArrowSymbols, false)
-    .setPreference(AlignParameters, true)
-    .setPreference(AlignSingleLineCaseStatements, true)
-    .setPreference(SpacesAroundMultiImports, true)
-}
 
 lazy val scalaChat = (project in file("samples/scala/chat"))
   .enablePlugins(PlayScala)
@@ -103,7 +66,6 @@ lazy val scalaChat = (project in file("samples/scala/chat"))
     name := "play-socket.io-scala-chat-example",
     organization := "com.lightbend.play",
     scalaVersion := scala212,
-
     libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.3.0" % Provided
   )
 
@@ -114,7 +76,6 @@ lazy val scalaMultiRoomChat = (project in file("samples/scala/multi-room-chat"))
     name := "play-socket.io-scala-multi-room-chat-example",
     organization := "com.lightbend.play",
     scalaVersion := scala212,
-
     libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.3.0" % Provided
   )
 
@@ -125,11 +86,10 @@ lazy val scalaClusteredChat = (project in file("samples/scala/clustered-chat"))
     name := "play-socket.io-scala-clustered-chat-example",
     organization := "com.lightbend.play",
     scalaVersion := scala212,
-
     libraryDependencies ++= Seq(
-      "com.softwaremill.macwire" %% "macros" % "2.3.0" % Provided,
-      "com.typesafe.akka" %% "akka-cluster" % AkkaVersion,
-      "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
+      "com.softwaremill.macwire" %% "macros"             % "2.3.0" % Provided,
+      "com.typesafe.akka"        %% "akka-cluster"       % AkkaVersion,
+      "com.typesafe.akka"        %% "akka-cluster-tools" % AkkaVersion
     )
   )
 
@@ -151,7 +111,6 @@ lazy val javaMultiRoomChat = (project in file("samples/java/multi-room-chat"))
     name := "play-socket.io-java-multi-room-chat-example",
     organization := "com.lightbend.play",
     scalaVersion := scala212,
-
     libraryDependencies ++= Seq(
       guice,
       "org.projectlombok" % "lombok" % "1.16.16"
@@ -165,12 +124,10 @@ lazy val javaClusteredChat = (project in file("samples/java/clustered-chat"))
     name := "play-socket.io-java-clustered-chat-example",
     organization := "com.lightbend.play",
     scalaVersion := scala212,
-
     libraryDependencies ++= Seq(
       guice,
-      "org.projectlombok" % "lombok" % "1.16.16",
-      "com.typesafe.akka" %% "akka-cluster" % AkkaVersion,
+      "org.projectlombok" % "lombok"              % "1.16.16",
+      "com.typesafe.akka" %% "akka-cluster"       % AkkaVersion,
       "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
     )
   )
-

@@ -1,12 +1,14 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
  */
 package play.socketio.protocol
 
 import akka.util.ByteString
 import play.api.libs.json._
 import play.engineio.protocol._
-import play.engineio.{ BinaryEngineIOMessage, EngineIOMessage, TextEngineIOMessage }
+import play.engineio.BinaryEngineIOMessage
+import play.engineio.EngineIOMessage
+import play.engineio.TextEngineIOMessage
 
 import scala.collection.immutable
 
@@ -19,13 +21,13 @@ sealed abstract class SocketIOPacketType private (val id: Int) {
 }
 
 object SocketIOPacketType {
-  case object Connect extends SocketIOPacketType(0)
-  case object Disconnect extends SocketIOPacketType(1)
-  case object Event extends SocketIOPacketType(2)
-  case object Ack extends SocketIOPacketType(3)
-  case object Error extends SocketIOPacketType(4)
+  case object Connect     extends SocketIOPacketType(0)
+  case object Disconnect  extends SocketIOPacketType(1)
+  case object Event       extends SocketIOPacketType(2)
+  case object Ack         extends SocketIOPacketType(3)
+  case object Error       extends SocketIOPacketType(4)
   case object BinaryEvent extends SocketIOPacketType(5)
-  case object BinaryAck extends SocketIOPacketType(6)
+  case object BinaryAck   extends SocketIOPacketType(6)
 
   def fromChar(char: Char) = char match {
     case '0' => Connect
@@ -80,11 +82,16 @@ object SocketIOErrorPacket {
   }
 }
 
-case class SocketIOBinaryEventPacket(namespace: Option[String], data: Seq[Either[JsValue, ByteString]], id: Option[Long]) extends SocketIOPacket {
+case class SocketIOBinaryEventPacket(
+    namespace: Option[String],
+    data: Seq[Either[JsValue, ByteString]],
+    id: Option[Long]
+) extends SocketIOPacket {
   override def packetType = SocketIOPacketType.BinaryEvent
 }
 
-case class SocketIOBinaryAckPacket(namespace: Option[String], data: Seq[Either[JsValue, ByteString]], id: Long) extends SocketIOPacket {
+case class SocketIOBinaryAckPacket(namespace: Option[String], data: Seq[Either[JsValue, ByteString]], id: Long)
+    extends SocketIOPacket {
   override def packetType = SocketIOPacketType.BinaryAck
 }
 
@@ -129,8 +136,7 @@ object SocketIOPacket {
       if (packet.namespace.isDefined) {
         message += ','
       }
-      id.foreach(id =>
-        message ++= id.toString)
+      id.foreach(id => message ++= id.toString)
       message ++= Json.stringify(data)
     }
 
@@ -171,22 +177,26 @@ object SocketIOPacket {
     }
 
     val packetType = SocketIOPacketType.fromChar(text.head)
-    val (placeholders, namespaceStart) = if (packetType == SocketIOPacketType.BinaryAck || packetType == SocketIOPacketType.BinaryEvent) {
-      val placeholdersSeparator = text.indexOf('-', 1)
-      if (placeholdersSeparator == -1) {
-        throw SocketIOEncodingException(text, s"Malformed binary socket.io packet, missing placeholder separator")
+    val (placeholders, namespaceStart) =
+      if (packetType == SocketIOPacketType.BinaryAck || packetType == SocketIOPacketType.BinaryEvent) {
+        val placeholdersSeparator = text.indexOf('-', 1)
+        if (placeholdersSeparator == -1) {
+          throw SocketIOEncodingException(text, s"Malformed binary socket.io packet, missing placeholder separator")
+        }
+        val placeholders = try {
+          text.substring(1, placeholdersSeparator).toInt
+        } catch {
+          case _: NumberFormatException =>
+            throw SocketIOEncodingException(
+              text,
+              "Malformed binary socket.io packet, num placeholders is not a number: '" +
+                text.substring(1, placeholdersSeparator) + "'"
+            )
+        }
+        (placeholders, placeholdersSeparator + 1)
+      } else {
+        (0, 1)
       }
-      val placeholders = try {
-        text.substring(1, placeholdersSeparator).toInt
-      } catch {
-        case _: NumberFormatException =>
-          throw SocketIOEncodingException(text, "Malformed binary socket.io packet, num placeholders is not a number: '" +
-            text.substring(1, placeholdersSeparator) + "'")
-      }
-      (placeholders, placeholdersSeparator + 1)
-    } else {
-      (0, 1)
-    }
 
     val (namespace, dataStart) = if (text.length > namespaceStart && text(namespaceStart) == '/') {
       val namespaceEnd = text.indexOf(',', namespaceStart)
@@ -202,7 +212,10 @@ object SocketIOPacket {
       val argsStart = text.indexOf('[', dataStart)
 
       if (argsStart == -1) {
-        throw SocketIOEncodingException(text, s"Expected JSON array open after data separator, but got '${text.substring(dataStart)}'")
+        throw SocketIOEncodingException(
+          text,
+          s"Expected JSON array open after data separator, but got '${text.substring(dataStart)}'"
+        )
       }
 
       val index = if (argsStart - dataStart >= 1) {
@@ -251,7 +264,10 @@ object SocketIOPacket {
     (socketIOPacket, placeholders)
   }
 
-  def replacePlaceholders(data: Seq[Either[JsValue, ByteString]], parts: IndexedSeq[ByteString]): Seq[Either[JsValue, ByteString]] = {
+  def replacePlaceholders(
+      data: Seq[Either[JsValue, ByteString]],
+      parts: IndexedSeq[ByteString]
+  ): Seq[Either[JsValue, ByteString]] = {
     data.map {
       case Left(obj: JsObject) if (obj \ "_placeholder").toOption.contains(JsTrue) =>
         val num = (obj \ "num").as[Int]
@@ -276,4 +292,7 @@ object SocketIOPacket {
  * packets.
  */
 case class SocketIOEncodingException(packet: String, message: String, cause: Exception = null)
-  extends RuntimeException(s"Error decoding socket IO packet '${packet.take(80)}${if (packet.length > 80) "..." else ""}': $message", cause)
+    extends RuntimeException(
+      s"Error decoding socket IO packet '${packet.take(80)}${if (packet.length > 80) "..." else ""}': $message",
+      cause
+    )

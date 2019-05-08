@@ -1,13 +1,15 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
  */
 package play.engineio
 
 import akka.Done
-import akka.actor.{ Actor, Props }
+import akka.actor.Actor
+import akka.actor.Props
 import akka.routing.ConsistentHashingRouter.ConsistentHashable
 import play.api.mvc.RequestHeader
-import play.engineio.protocol.{ EngineIOPacket, EngineIOTransport }
+import play.engineio.protocol.EngineIOPacket
+import play.engineio.protocol.EngineIOTransport
 
 /**
  * The actor responsible for managing all engine.io sessions for this node.
@@ -22,6 +24,7 @@ object EngineIOManagerActor {
    * consistent hashing router, particularly useful in a cluster scenario.
    */
   sealed trait SessionMessage extends ConsistentHashable {
+
     /**
      * The session id.
      */
@@ -43,12 +46,14 @@ object EngineIOManagerActor {
   /**
    * Connect a session. Sent to initiate a new session.
    */
-  case class Connect(sid: String, transport: EngineIOTransport, request: RequestHeader, requestId: String) extends SessionMessage
+  case class Connect(sid: String, transport: EngineIOTransport, request: RequestHeader, requestId: String)
+      extends SessionMessage
 
   /**
    * Push packets into the session.
    */
-  case class Packets(sid: String, transport: EngineIOTransport, packets: Seq[EngineIOPacket], requestId: String) extends SessionMessage
+  case class Packets(sid: String, transport: EngineIOTransport, packets: Seq[EngineIOPacket], requestId: String)
+      extends SessionMessage
 
   /**
    * Retrieve packets from the session.

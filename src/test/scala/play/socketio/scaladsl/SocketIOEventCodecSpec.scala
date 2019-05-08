@@ -1,23 +1,31 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
  */
 package play.socketio.scaladsl
 
 import akka.util.ByteString
-import org.scalatest.{Matchers, OptionValues, WordSpec}
-import play.api.libs.json.{JsString, JsValue}
-import play.socketio.{SocketIOEvent, SocketIOEventAck}
+import org.scalatest.Matchers
+import org.scalatest.OptionValues
+import org.scalatest.WordSpec
+import play.api.libs.json.JsString
+import play.api.libs.json.JsValue
+import play.socketio.SocketIOEvent
+import play.socketio.SocketIOEventAck
 
 class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
 
   import play.socketio.scaladsl.SocketIOEventCodec._
 
   private class CapturingAck extends SocketIOEventAck {
-    var args: Option[Seq[Either[JsValue, ByteString]]] = None
+    var args: Option[Seq[Either[JsValue, ByteString]]]         = None
     override def apply(args: Seq[Either[JsValue, ByteString]]) = this.args = Some(args)
   }
 
-  def decodeStringArgs[T](decoder: SocketIOEventDecoder[T], args: Seq[String], ack: Option[SocketIOEventAck] = None): T = {
+  def decodeStringArgs[T](
+      decoder: SocketIOEventDecoder[T],
+      args: Seq[String],
+      ack: Option[SocketIOEventAck] = None
+  ): T = {
     decoder(SocketIOEvent.unnamed(stringsToArgs(args: _*), ack))
   }
 
@@ -33,7 +41,8 @@ class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
 
     "allow decoding single argument events with ack" in {
       val capture = new CapturingAck
-      val (result, ack) = decodeStringArgs(decodeJson[String].withAckEncoder(encodeJson[String]), Seq("one"), Some(capture))
+      val (result, ack) =
+        decodeStringArgs(decodeJson[String].withAckEncoder(encodeJson[String]), Seq("one"), Some(capture))
       result should ===("one")
       ack("ack")
       capture.args.value should ===(stringsToArgs("ack"))
@@ -41,7 +50,11 @@ class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
 
     "allow decoding single argument events with multi argument acks" in {
       val capture = new CapturingAck
-      val (result, ack) = decodeStringArgs(decodeJson[String].withAckEncoder(encodeJson[String] ~ encodeJson[String]), Seq("one"), Some(capture))
+      val (result, ack) = decodeStringArgs(
+        decodeJson[String].withAckEncoder(encodeJson[String] ~ encodeJson[String]),
+        Seq("one"),
+        Some(capture)
+      )
       result should ===("one")
       ack(("ack1", "ack2"))
       capture.args.value should ===(stringsToArgs("ack1", "ack2"))
@@ -55,23 +68,27 @@ class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
       val capture = new CapturingAck
       val (arg1, arg2, ack) = decodeStringArgs(
         (decodeJson[String] ~ decodeJson[String]).withAckEncoder(encodeJson[String]),
-        Seq("one", "two"), Some(capture))
+        Seq("one", "two"),
+        Some(capture)
+      )
       (arg1, arg2) should ===(("one", "two"))
       ack("ack")
       capture.args.value should ===(stringsToArgs("ack"))
     }
 
     "allow decoding three argument events" in {
-      decodeStringArgs(
-        decodeJson[String] ~ decodeJson[String] ~ decodeJson[String],
-        Seq("one", "two", "three")) should ===(("one", "two", "three"))
+      decodeStringArgs(decodeJson[String] ~ decodeJson[String] ~ decodeJson[String], Seq("one", "two", "three")) should ===(
+        ("one", "two", "three")
+      )
     }
 
     "allow decoding three argument events with ack" in {
       val capture = new CapturingAck
       val (arg1, arg2, arg3, ack) = decodeStringArgs(
         (decodeJson[String] ~ decodeJson[String] ~ decodeJson[String]).withAckEncoder(encodeJson[String]),
-        Seq("one", "two", "three"), Some(capture))
+        Seq("one", "two", "three"),
+        Some(capture)
+      )
       (arg1, arg2, arg3) should ===(("one", "two", "three"))
       ack("ack")
       capture.args.value should ===(stringsToArgs("ack"))
@@ -80,7 +97,8 @@ class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
     "allow decoding four argument events" in {
       decodeStringArgs(
         decodeJson[String] ~ decodeJson[String] ~ decodeJson[String] ~ decodeJson[String],
-        Seq("one", "two", "three", "four")) should ===(("one", "two", "three", "four"))
+        Seq("one", "two", "three", "four")
+      ) should ===(("one", "two", "three", "four"))
     }
 
     "allow encoding single argument events" in {
@@ -89,7 +107,8 @@ class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
 
     "allow encoding single argument events with ack" in {
       var arg: Option[String] = None
-      val event = encodeJson[String].withAckDecoder(decodeJson[String])
+      val event = encodeJson[String]
+        .withAckDecoder(decodeJson[String])
         .apply(("one", a => arg = Some(a)))
 
       event.arguments should ===(stringsToArgs("one"))
@@ -99,7 +118,8 @@ class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
 
     "allow encoding single argument events with multi argument acks" in {
       var arg: Option[(String, String)] = None
-      val event = encodeJson[String].withAckDecoder(decodeJson[String] ~ decodeJson[String])
+      val event = encodeJson[String]
+        .withAckDecoder(decodeJson[String] ~ decodeJson[String])
         .apply(("one", a => arg = Some(a)))
 
       event.arguments should ===(stringsToArgs("one"))
@@ -109,12 +129,14 @@ class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
 
     "allow encoding two argument events" in {
       (encodeJson[String] ~ encodeJson[String])
-        .apply(("one", "two")).arguments should ===(stringsToArgs("one", "two"))
+        .apply(("one", "two"))
+        .arguments should ===(stringsToArgs("one", "two"))
     }
 
     "allow encoding two argument events with ack" in {
       var arg: Option[String] = None
-      val event = (encodeJson[String] ~ encodeJson[String]).withAckDecoder(decodeJson[String])
+      val event = (encodeJson[String] ~ encodeJson[String])
+        .withAckDecoder(decodeJson[String])
         .apply(("one", "two", a => arg = Some(a)))
 
       event.arguments should ===(stringsToArgs("one", "two"))
@@ -124,12 +146,14 @@ class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
 
     "allow encoding three argument events" in {
       (encodeJson[String] ~ encodeJson[String] ~ encodeJson[String])
-        .apply(("one", "two", "three")).arguments should ===(stringsToArgs("one", "two", "three"))
+        .apply(("one", "two", "three"))
+        .arguments should ===(stringsToArgs("one", "two", "three"))
     }
 
     "allow encoding three argument events with ack" in {
       var arg: Option[String] = None
-      val event = (encodeJson[String] ~ encodeJson[String] ~ encodeJson[String]).withAckDecoder(decodeJson[String])
+      val event = (encodeJson[String] ~ encodeJson[String] ~ encodeJson[String])
+        .withAckDecoder(decodeJson[String])
         .apply(("one", "two", "three", a => arg = Some(a)))
 
       event.arguments should ===(stringsToArgs("one", "two", "three"))
@@ -139,7 +163,8 @@ class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
 
     "allow encoding four argument events" in {
       (encodeJson[String] ~ encodeJson[String] ~ encodeJson[String] ~ encodeJson[String])
-        .apply(("one", "two", "three", "four")).arguments should ===(stringsToArgs("one", "two", "three", "four"))
+        .apply(("one", "two", "three", "four"))
+        .arguments should ===(stringsToArgs("one", "two", "three", "four"))
     }
 
     "allow combining decoders by name" in {
@@ -155,7 +180,10 @@ class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
     "allow combining encoders by type" in {
       val encoder = encodeByType[Any] {
         case _: String => "string" -> encodeJson[String]
-        case _: Int => "int" -> encodeJson[String].compose { i: Int => i.toString }
+        case _: Int =>
+          "int" -> encodeJson[String].compose { i: Int =>
+            i.toString
+          }
       }
 
       val e1 = encoder("arg")
@@ -167,13 +195,13 @@ class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
     }
 
     "allow mapping decoders" in {
-      val decoder = decodeJson[String] ~ decodeJson[String] andThen { case (a, b) => s"$a:$b" }
+      val decoder = (decodeJson[String] ~ decodeJson[String]).andThen { case (a, b) => s"$a:$b" }
       decodeStringArgs(decoder, Seq("one", "two")) should ===("one:two")
     }
 
     "allow composing encoders" in {
       case class Args(a: String, b: String)
-      val encoder = encodeJson[String] ~ encodeJson[String] compose[Args] { case Args(a, b) => (a, b) }
+      val encoder = (encodeJson[String] ~ encodeJson[String]).compose[Args] { case Args(a, b) => (a, b) }
       // This assignment is purely to ensure that the Scala compiler correctly inferred the type of encoder
       val checkTypeInference: SocketIOEventEncoder[Args] = encoder
       checkTypeInference(Args("one", "two")).arguments should ===(stringsToArgs("one", "two"))

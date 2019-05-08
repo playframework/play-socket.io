@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
  */
 package play.socketio
 
@@ -18,7 +18,7 @@ object RunSocketIOTests extends App {
 
   val port = 9123
 
-  val timeout = 60000
+  val timeout      = 60000
   val pollInterval = 200
 
   // Initialise logging before we start to do anything
@@ -37,8 +37,8 @@ object RunSocketIOTests extends App {
   val passed = try {
 
     runTests("Scala support", TestSocketIOScalaApplication) &&
-      runTests("Java support", new TestSocketIOJavaApplication) &&
-      runTests("Multi-node support", TestMultiNodeSocketIOApplication)
+    runTests("Java support", new TestSocketIOJavaApplication) &&
+    runTests("Multi-node support", TestMultiNodeSocketIOApplication)
 
   } finally {
     driver.quit()
@@ -60,9 +60,14 @@ object RunSocketIOTests extends App {
     var passCount = 0
     var failCount = 0
 
-    withCloseable(TestSocketIOServer.start(application, ServerConfig(
-      port = Some(port)
-    )))(_.stop()) { _ =>
+    withCloseable(
+      TestSocketIOServer.start(
+        application,
+        ServerConfig(
+          port = Some(port)
+        )
+      )
+    )(_.stop()) { _ =>
       driver.navigate().to(s"http://localhost:$port/index.html?dontrun=true&jsonp=true")
       driver.executeScript("runMocha();")
       consume(driver, System.currentTimeMillis())
@@ -92,7 +97,9 @@ object RunSocketIOTests extends App {
                   } else {
                     Colors.green("success")
                   }
-                  println(s"[$status] Test run finished in ${System.currentTimeMillis() - start}ms with $passCount passed and $failCount failed")
+                  println(
+                    s"[$status] Test run finished in ${System.currentTimeMillis() - start}ms with $passCount passed and $failCount failed"
+                  )
                   end = true
                 case other => sys.error("Unexpected event: " + other)
               }
@@ -112,10 +119,11 @@ object RunSocketIOTests extends App {
     failCount == 0
   }
 
-  def withCloseable[T](closeable: T)(close: T => Unit)(block: T => Unit) = try {
-    block(closeable)
-  } finally {
-    close(closeable)
-  }
+  def withCloseable[T](closeable: T)(close: T => Unit)(block: T => Unit) =
+    try {
+      block(closeable)
+    } finally {
+      close(closeable)
+    }
 
 }

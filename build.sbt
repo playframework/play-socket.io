@@ -1,8 +1,7 @@
-import com.typesafe.sbt.SbtScalariform.ScalariformKeys
-import de.heikoseeberger.sbtheader.HeaderPattern
-import play.core.PlayVersion.{current => playVersion}
+import play.core.PlayVersion.{ current => playVersion }
 import interplay.ScalaVersions._
 
+val scala211 = "2.11.12"
 val AkkaVersion = "2.5.21"
 
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
@@ -15,6 +14,7 @@ lazy val root = (project in file("."))
   .settings(
     organization := "com.lightbend.play",
     name := "play-socket-io",
+    crossScalaVersions := Seq(scala212, scala211),
     scalacOptions ++= Seq("-feature", "-Xfatal-warnings"),
     scalacOptions in (Compile, doc) := Nil,
     javacOptions ++= Seq("-Xlint"),
@@ -100,7 +100,6 @@ lazy val javaChat = (project in file("samples/java/chat"))
     name := "play-socket.io-java-chat-example",
     organization := "com.lightbend.play",
     scalaVersion := scala212,
-
     libraryDependencies += guice
   )
 

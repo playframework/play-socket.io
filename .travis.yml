@@ -29,9 +29,10 @@ before_script:
   - sleep 5 # give xvfb some time to start
 
 script:
-  - sbt +test
-  - sbt +headerCheck +test:headerCheck
+  - sbt ++$TRAVIS_SCALA_VERSION test
+  - sbt ++$TRAVIS_SCALA_VERSION headerCheck test:headerCheck
   - sbt scalafmtCheckAll scalafmtSbtCheck
+
 cache:
   directories:
     - $HOME/.ivy2

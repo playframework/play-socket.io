@@ -6,6 +6,13 @@ val AkkaVersion = "2.5.22"
 
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
 
+val macwire = "com.softwaremill.macwire" %% "macros" % "2.3.2"
+val lombok  = "org.projectlombok"        % "lombok"  % "1.18.8"
+val akkaCluster = Seq(
+  "com.typesafe.akka" %% "akka-cluster"       % AkkaVersion,
+  "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
+)
+
 playBuildRepoName in ThisBuild := "play-socket.io"
 sonatypeProfileName in ThisBuild := "com.lightbend"
 
@@ -26,9 +33,9 @@ lazy val root = (project in file("."))
       "com.typesafe.play" %% "play-akka-http-server" % playVersion % Test,
       "com.typesafe.play" %% "play-logback"          % playVersion % Test,
       // Test dependencies for Scala/Java dependency injection
-      "com.typesafe.play"        %% "play-guice" % playVersion % Test,
-      "com.softwaremill.macwire" %% "macros"     % "2.3.0"     % Test,
-      // Test dependencies for running phantomjs
+      "com.typesafe.play" %% "play-guice" % playVersion % Test,
+      macwire             % Test,
+      // Test dependencies for running chrome driver
       "org.seleniumhq.selenium" % "selenium-chrome-driver" % "3.141.59",
       // Test framework dependencies
       "org.scalatest" %% "scalatest"      % "3.0.7" % Test,
@@ -64,7 +71,7 @@ lazy val scalaChat = (project in file("samples/scala/chat"))
     name := "play-socket.io-scala-chat-example",
     organization := "com.lightbend.play",
     scalaVersion := scala212,
-    libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.3.0" % Provided
+    libraryDependencies += macwire % Provided
   )
 
 lazy val scalaMultiRoomChat = (project in file("samples/scala/multi-room-chat"))
@@ -74,7 +81,7 @@ lazy val scalaMultiRoomChat = (project in file("samples/scala/multi-room-chat"))
     name := "play-socket.io-scala-multi-room-chat-example",
     organization := "com.lightbend.play",
     scalaVersion := scala212,
-    libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.3.0" % Provided
+    libraryDependencies += macwire % Provided
   )
 
 lazy val scalaClusteredChat = (project in file("samples/scala/clustered-chat"))
@@ -84,11 +91,7 @@ lazy val scalaClusteredChat = (project in file("samples/scala/clustered-chat"))
     name := "play-socket.io-scala-clustered-chat-example",
     organization := "com.lightbend.play",
     scalaVersion := scala212,
-    libraryDependencies ++= Seq(
-      "com.softwaremill.macwire" %% "macros"             % "2.3.0" % Provided,
-      "com.typesafe.akka"        %% "akka-cluster"       % AkkaVersion,
-      "com.typesafe.akka"        %% "akka-cluster-tools" % AkkaVersion
-    )
+    libraryDependencies ++= Seq(macwire % Provided) ++ akkaCluster
   )
 
 lazy val javaChat = (project in file("samples/java/chat"))
@@ -108,10 +111,7 @@ lazy val javaMultiRoomChat = (project in file("samples/java/multi-room-chat"))
     name := "play-socket.io-java-multi-room-chat-example",
     organization := "com.lightbend.play",
     scalaVersion := scala212,
-    libraryDependencies ++= Seq(
-      guice,
-      "org.projectlombok" % "lombok" % "1.16.16"
-    )
+    libraryDependencies ++= Seq(guice, lombok)
   )
 
 lazy val javaClusteredChat = (project in file("samples/java/clustered-chat"))
@@ -121,10 +121,5 @@ lazy val javaClusteredChat = (project in file("samples/java/clustered-chat"))
     name := "play-socket.io-java-clustered-chat-example",
     organization := "com.lightbend.play",
     scalaVersion := scala212,
-    libraryDependencies ++= Seq(
-      guice,
-      "org.projectlombok" % "lombok"              % "1.16.16",
-      "com.typesafe.akka" %% "akka-cluster"       % AkkaVersion,
-      "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
-    )
+    libraryDependencies ++= Seq(guice, lombok) ++ akkaCluster
   )

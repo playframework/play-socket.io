@@ -52,7 +52,7 @@ class TestSocketIOScalaApplication(initialSettings: Map[String, AnyRef]) extends
   ): BuiltInComponents = {
 
     val components = new BuiltInComponentsFromContext(
-      ApplicationLoader.createContext(
+      ApplicationLoader.Context.create(
         Environment.simple(),
         initialSettings = initialSettings
       )

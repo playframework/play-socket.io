@@ -3,8 +3,9 @@ import de.heikoseeberger.sbtheader.HeaderPattern
 import play.core.PlayVersion.{current => playVersion}
 import interplay.ScalaVersions._
 
-lazy val runPhantomjs = taskKey[Unit]("Run the phantomjs tests")
 val AkkaVersion = "2.5.21"
+
+lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
 
 playBuildRepoName in ThisBuild := "play-socket.io"
 sonatypeProfileName in ThisBuild := "com.lightbend"
@@ -33,8 +34,7 @@ lazy val root = (project in file("."))
       "com.softwaremill.macwire" %% "macros" % "2.3.0" % Test,
 
       // Test dependencies for running phantomjs
-      "ch.racic.selenium" % "selenium-driver-helper-phantomjs" % "2.1.1" % Test,
-      "com.github.detro" % "ghostdriver" % "2.1.0" % Test,
+      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "3.141.59",
 
       // Test framework dependencies
       "org.scalatest" %% "scalatest" % "3.0.7" % Test,
@@ -48,7 +48,7 @@ lazy val root = (project in file("."))
     fork in Test := true,
     connectInput in (Test, run) := true,
 
-    runPhantomjs := {
+    runChromeWebDriver := {
       (runMain in Test).toTask(" play.socketio.RunSocketIOTests").value
     },
 
@@ -61,7 +61,7 @@ lazy val root = (project in file("."))
 
     test in Test := {
       (test in Test).value
-      runPhantomjs.value
+      runChromeWebDriver.value
     },
 
     resolvers += "jitpack" at "https://jitpack.io",

@@ -3,15 +3,13 @@
  */
 package play.socketio
 
-import ch.racic.selenium.drivers.PhantomJSDriverHelper
-import org.openqa.selenium.phantomjs.{ PhantomJSDriver, PhantomJSDriverService }
-import org.openqa.selenium.remote.DesiredCapabilities
 import play.core.server.ServerConfig
 import java.util
 
-import play.api.{ Environment, LoggerConfigurator }
+import org.openqa.selenium.chrome.{ChromeDriver, ChromeDriverService, ChromeOptions}
+import play.api.{Environment, LoggerConfigurator}
 import play.socketio.javadsl.TestSocketIOJavaApplication
-import play.socketio.scaladsl.{ TestMultiNodeSocketIOApplication, TestSocketIOScalaApplication }
+import play.socketio.scaladsl.{TestMultiNodeSocketIOApplication, TestSocketIOScalaApplication}
 import play.utils.Colors
 
 import scala.collection.JavaConverters._
@@ -27,15 +25,10 @@ object RunSocketIOTests extends App {
   val environment = Environment.simple()
   LoggerConfigurator(environment.classLoader).foreach(_.configure(environment))
 
-  val capabilities = DesiredCapabilities.phantomjs()
+  val chromeOptions: ChromeOptions = new ChromeOptions()
+  val chromeDriverService: ChromeDriverService = ChromeDriverService.createDefaultService()
 
-  capabilities.setCapability(
-    PhantomJSDriverService.PHANTOMJS_EXECUTABLE_PATH_PROPERTY,
-    PhantomJSDriverHelper.executable64().getAbsolutePath
-  )
-  capabilities.setCapability(PhantomJSDriverService.PHANTOMJS_CLI_ARGS, Array("--webdriver-loglevel=WARN"))
-
-  val driver = new PhantomJSDriver(capabilities)
+  val driver =  new ChromeDriver(chromeDriverService, chromeOptions)
 
   Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
     def run(): Unit = driver.quit()
@@ -76,7 +69,7 @@ object RunSocketIOTests extends App {
     }
 
     @annotation.tailrec
-    def consume(driver: PhantomJSDriver, start: Long): Unit = {
+    def consume(driver: ChromeDriver, start: Long): Unit = {
       var end = false
       driver.executeScript("return consumeMochaEvents();") match {
         case list: util.List[_] =>

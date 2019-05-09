@@ -6,10 +6,14 @@ package play.socketio
 import play.core.server.ServerConfig
 import java.util
 
-import org.openqa.selenium.chrome.{ChromeDriver, ChromeDriverService, ChromeOptions}
-import play.api.{Environment, LoggerConfigurator}
+import org.openqa.selenium.chrome.ChromeDriver
+import org.openqa.selenium.chrome.ChromeDriverService
+import org.openqa.selenium.chrome.ChromeOptions
+import play.api.Environment
+import play.api.LoggerConfigurator
 import play.socketio.javadsl.TestSocketIOJavaApplication
-import play.socketio.scaladsl.{TestMultiNodeSocketIOApplication, TestSocketIOScalaApplication}
+import play.socketio.scaladsl.TestMultiNodeSocketIOApplication
+import play.socketio.scaladsl.TestSocketIOScalaApplication
 import play.utils.Colors
 
 import scala.collection.JavaConverters._
@@ -25,10 +29,10 @@ object RunSocketIOTests extends App {
   val environment = Environment.simple()
   LoggerConfigurator(environment.classLoader).foreach(_.configure(environment))
 
-  val chromeOptions: ChromeOptions = new ChromeOptions()
+  val chromeOptions: ChromeOptions             = new ChromeOptions()
   val chromeDriverService: ChromeDriverService = ChromeDriverService.createDefaultService()
 
-  val driver =  new ChromeDriver(chromeDriverService, chromeOptions)
+  val driver = new ChromeDriver(chromeDriverService, chromeOptions)
 
   Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
     def run(): Unit = driver.quit()

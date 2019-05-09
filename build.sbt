@@ -1,7 +1,7 @@
 import play.core.PlayVersion.{ current => playVersion }
 import interplay.ScalaVersions._
 
-val scala211 = "2.11.12"
+val scala211    = "2.11.12"
 val AkkaVersion = "2.5.21"
 
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
@@ -30,7 +30,6 @@ lazy val root = (project in file("."))
       "com.softwaremill.macwire" %% "macros"     % "2.3.0"     % Test,
       // Test dependencies for running phantomjs
       "org.seleniumhq.selenium" % "selenium-chrome-driver" % "3.141.59",
-
       // Test framework dependencies
       "org.scalatest" %% "scalatest"      % "3.0.7" % Test,
       "com.novocode"  % "junit-interface" % "0.11"  % Test
@@ -40,7 +39,6 @@ lazy val root = (project in file("."))
     ),
     fork in Test := true,
     connectInput in (Test, run) := true,
-
     runChromeWebDriver := {
       (runMain in Test).toTask(" play.socketio.RunSocketIOTests").value
     },

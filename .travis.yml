@@ -1,16 +1,29 @@
 language: scala
-jdk: oraclejdk8
-sudo: false
+scala: 2.12.8
+
+env:
+  matrix:
+    - TRAVIS_JDK=adopt@1.11.0-3
+    - TRAVIS_JDK=adopt@1.8.212-03
+
+before_install: curl -Ls https://git.io/jabba | bash && . ~/.jabba/jabba.sh
+install: jabba install "$TRAVIS_JDK" && jabba use "$_" && java -Xmx32m -version
+
 script:
-  - sbt +test 
+  - sbt +test
+
 cache:
   directories:
-    - $HOME/.ivy2/cache
+    - $HOME/.ivy2
+    - $HOME/.jabba/jdk
+    - $HOME/.sbt
+
 before_cache:
+  - find $HOME/.ivy2 -name "ivydata-*.properties" -delete
+  - find $HOME/.sbt  -name "*.lock"               -delete
   # Ensure changes to the cache aren't persisted
   - rm -rf $HOME/.ivy2/cache/com.lightbend.play/play-socket-io*
-  # Delete all ivydata files since ivy touches them on each build
-  - find $HOME/.ivy2/cache -name "ivydata-*.properties" | xargs rm
+
 notifications:
   webhooks:
     urls:

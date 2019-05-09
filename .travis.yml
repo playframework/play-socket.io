@@ -4,7 +4,7 @@ sudo: false
 script:
   - sbt +test 
   - sbt +headerCheck +test:headerCheck
-  - sbt +scalafmtCheckAll +scalafmtSbtCheck
+  - sbt scalafmtCheckAll scalafmtSbtCheck
 cache:
   directories:
     - $HOME/.ivy2/cache

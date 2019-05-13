@@ -1,19 +1,26 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
  */
 package play.engineio
 
 import java.util.UUID
-import javax.inject.{ Inject, Provider, Singleton }
+import javax.inject.Inject
+import javax.inject.Provider
+import javax.inject.Singleton
 
 import akka.NotUsed
 import akka.pattern.ask
-import akka.actor.{ ActorRef, ActorSystem }
+import akka.actor.ActorRef
+import akka.actor.ActorSystem
 import akka.routing.FromConfig
 import akka.stream._
-import akka.stream.scaladsl.{ Flow, Sink, Source }
+import akka.stream.scaladsl.Flow
+import akka.stream.scaladsl.Sink
+import akka.stream.scaladsl.Source
 import akka.util.Timeout
-import play.api.{ Configuration, Environment, Logger }
+import play.api.Configuration
+import play.api.Environment
+import play.api.Logger
 import play.api.http.HttpErrorHandler
 import play.api.inject.Module
 import play.api.mvc._
@@ -22,17 +29,19 @@ import play.engineio.protocol._
 import play.socketio.scaladsl.SocketIO
 
 import scala.collection.immutable
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.util.{ Failure, Success }
+import scala.util.Failure
+import scala.util.Success
 
 case class EngineIOConfig(
-  pingInterval: FiniteDuration         = 25.seconds,
-  pingTimeout:  FiniteDuration         = 60.seconds,
-  transports:   Seq[EngineIOTransport] = Seq(EngineIOTransport.WebSocket, EngineIOTransport.Polling),
-  actorName:    String                 = "engine.io",
-  routerName:   Option[String]         = None,
-  useRole:      Option[String]         = None
+    pingInterval: FiniteDuration = 25.seconds,
+    pingTimeout: FiniteDuration = 60.seconds,
+    transports: Seq[EngineIOTransport] = Seq(EngineIOTransport.WebSocket, EngineIOTransport.Polling),
+    actorName: String = "engine.io",
+    routerName: Option[String] = None,
+    useRole: Option[String] = None
 )
 
 object EngineIOConfig {
@@ -50,7 +59,7 @@ object EngineIOConfig {
 }
 
 @Singleton
-class EngineIOConfigProvider @Inject() (configuration: Configuration) extends Provider[EngineIOConfig] {
+class EngineIOConfigProvider @Inject()(configuration: Configuration) extends Provider[EngineIOConfig] {
   override lazy val get: EngineIOConfig = EngineIOConfig.fromConfiguration(configuration)
 }
 
@@ -70,10 +79,16 @@ class EngineIOConfigProvider @Inject() (configuration: Configuration) extends Pr
  * POST    /socket.io/        play.engineio.EngineIOController.endpoint(transport)
  * }}}
  */
-final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErrorHandler, controllerComponents: ControllerComponents,
-                               actorSystem: ActorSystem, engineIOManager: ActorRef)(implicit ec: ExecutionContext) extends AbstractController(controllerComponents) {
+final class EngineIOController(
+    config: EngineIOConfig,
+    httpErrorHandler: HttpErrorHandler,
+    controllerComponents: ControllerComponents,
+    actorSystem: ActorSystem,
+    engineIOManager: ActorRef
+)(implicit ec: ExecutionContext)
+    extends AbstractController(controllerComponents) {
 
-  private val log = Logger(classOf[EngineIOController])
+  private val log              = Logger(classOf[EngineIOController])
   private implicit val timeout = Timeout(config.pingTimeout)
 
   /**
@@ -89,7 +104,7 @@ final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErr
   }
 
   private def pollingEndpoint = Action.async(EngineIOPayload.parser(parse)) { implicit request =>
-    val maybeSid = request.getQueryString("sid")
+    val maybeSid  = request.getQueryString("sid")
     val requestId = request.getQueryString("t").getOrElse(request.id.toString)
     val transport = EngineIOTransport.Polling
 
@@ -126,7 +141,7 @@ final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErr
   }
 
   private def webSocketEndpoint = WebSocket.acceptOrResult { request =>
-    val maybeSid = request.getQueryString("sid")
+    val maybeSid  = request.getQueryString("sid")
     val requestId = request.getQueryString("t").getOrElse(request.id.toString)
     val transport = EngineIOTransport.WebSocket
 
@@ -154,26 +169,33 @@ final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErr
 
     log.debug(s"Received WebSocket request for $sid")
 
-    val in = Flow[EngineIOPacket].batch(4, Vector(_))(_ :+ _).mapAsync(1) { packets =>
-      engineIOManager ? Packets(sid, transport, packets, requestId)
-    }.to(Sink.ignore.mapMaterializedValue(_.onComplete {
-      case Success(s) =>
-        engineIOManager ! Close(sid, transport, requestId)
-      case Failure(t) =>
-        log.warn("Error on incoming WebSocket", t)
-    }))
-
-    val out = Source.repeat(NotUsed).mapAsync(1) { _ =>
-      val asked = engineIOManager ? Retrieve(sid, transport, requestId)
-      asked.onComplete {
-        case Success(s) =>
-        case Failure(t) =>
-          log.warn("Error on outgoing WebSocket", t)
+    val in = Flow[EngineIOPacket]
+      .batch(4, Vector(_))(_ :+ _)
+      .mapAsync(1) { packets =>
+        engineIOManager ? Packets(sid, transport, packets, requestId)
       }
-      asked
-    } takeWhile (!_.isInstanceOf[Close]) mapConcat {
-      case Packets(_, _, packets, _) => packets.to[immutable.Seq]
-    }
+      .to(Sink.ignore.mapMaterializedValue(_.onComplete {
+        case Success(s) =>
+          engineIOManager ! Close(sid, transport, requestId)
+        case Failure(t) =>
+          log.warn("Error on incoming WebSocket", t)
+      }))
+
+    val out = Source
+      .repeat(NotUsed)
+      .mapAsync(1) { _ =>
+        val asked = engineIOManager ? Retrieve(sid, transport, requestId)
+        asked.onComplete {
+          case Success(s) =>
+          case Failure(t) =>
+            log.warn("Error on outgoing WebSocket", t)
+        }
+        asked
+      }
+      .takeWhile(!_.isInstanceOf[Close])
+      .mapConcat {
+        case Packets(_, _, packets, _) => packets.to[immutable.Seq]
+      }
 
     Flow.fromSinkAndSourceCoupled(in, out)
   }
@@ -184,8 +206,12 @@ final class EngineIOController(config: EngineIOConfig, httpErrorHandler: HttpErr
  * The engine.io system. Allows you to create engine.io controllers for handling engine.io connections.
  */
 @Singleton
-final class EngineIO @Inject() (config: EngineIOConfig, httpErrorHandler: HttpErrorHandler, controllerComponents: ControllerComponents,
-                                actorSystem: ActorSystem)(implicit ec: ExecutionContext, mat: Materializer) {
+final class EngineIO @Inject()(
+    config: EngineIOConfig,
+    httpErrorHandler: HttpErrorHandler,
+    controllerComponents: ControllerComponents,
+    actorSystem: ActorSystem
+)(implicit ec: ExecutionContext, mat: Materializer) {
 
   private val log = Logger(classOf[EngineIO])
 
@@ -201,16 +227,18 @@ final class EngineIO @Inject() (config: EngineIOConfig, httpErrorHandler: HttpEr
 
     val actorRef = config.routerName match {
       case Some(routerName) =>
-
         // Start the manager, if we're configured to do so
         config.useRole match {
           case Some(role) =>
             Configuration(actorSystem.settings.config).getOptional[Seq[String]]("akka.cluster.roles") match {
-              case None => throw new IllegalArgumentException("akka.cluster.roles is not set, are you using Akka clustering?")
+              case None =>
+                throw new IllegalArgumentException("akka.cluster.roles is not set, are you using Akka clustering?")
               case Some(roles) if roles.contains(role) =>
                 startManager()
               case _ =>
-                log.debug("Not starting EngineIOManagerActor because we don't have the " + role + " configured on this node")
+                log.debug(
+                  "Not starting EngineIOManagerActor because we don't have the " + role + " configured on this node"
+                )
             }
           case None =>
             startManager()
@@ -240,8 +268,8 @@ trait EngineIOComponents {
   def configuration: Configuration
 
   lazy val engineIOConfig: EngineIOConfig = EngineIOConfig.fromConfiguration(configuration)
-  lazy val engineIO: EngineIO = new EngineIO(engineIOConfig, httpErrorHandler,
-    controllerComponents, actorSystem)(executionContext, materializer)
+  lazy val engineIO: EngineIO =
+    new EngineIO(engineIOConfig, httpErrorHandler, controllerComponents, actorSystem)(executionContext, materializer)
 }
 
 /**

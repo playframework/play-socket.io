@@ -1,16 +1,50 @@
 language: scala
-jdk: oraclejdk8
-sudo: false
+scala: 2.12.8
+
+env:
+  global:
+    - CHROME_BIN=/usr/bin/google-chrome
+    - DBUS_SESSION_BUS_ADDRESS=/dev/null
+    - DISPLAY=:99.0
+  matrix:
+    - TRAVIS_JDK=adopt@1.11.0-3
+    - TRAVIS_JDK=adopt@1.8.212-03
+
+addons:
+  chrome: stable
+  apt:
+    packages:
+      - unzip
+      - dbus-x11
+
+before_install: curl -Ls https://git.io/jabba | bash && . ~/.jabba/jabba.sh
+install: jabba install "$TRAVIS_JDK" && jabba use "$_" && java -Xmx32m -version
+
+before_script:
+  - mkdir -p $HOME/tmp/bin
+  - pushd $HOME/tmp/bin && wget https://chromedriver.storage.googleapis.com/74.0.3729.6/chromedriver_linux64.zip && unzip chromedriver_linux64.zip && popd
+  - chmod -vv +x $HOME/tmp/bin/*
+  - export PATH=$HOME/tmp/bin:$PATH
+  - Xvfb :99 +extension RANDR 2>/dev/null &
+  - sleep 5 # give xvfb some time to start
+
 script:
-  - sbt +test 
+  - sbt ++$TRAVIS_SCALA_VERSION test
+  - sbt ++$TRAVIS_SCALA_VERSION headerCheck test:headerCheck
+  - sbt scalafmtCheckAll scalafmtSbtCheck
+
 cache:
   directories:
-    - $HOME/.ivy2/cache
+    - $HOME/.ivy2
+    - $HOME/.jabba/jdk
+    - $HOME/.sbt
+
 before_cache:
+  - find $HOME/.ivy2 -name "ivydata-*.properties" -delete
+  - find $HOME/.sbt  -name "*.lock"               -delete
   # Ensure changes to the cache aren't persisted
   - rm -rf $HOME/.ivy2/cache/com.lightbend.play/play-socket-io*
-  # Delete all ivydata files since ivy touches them on each build
-  - find $HOME/.ivy2/cache -name "ivydata-*.properties" | xargs rm
+
 notifications:
   webhooks:
     urls:

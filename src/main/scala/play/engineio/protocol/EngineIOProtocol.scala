@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
  */
 package play.engineio.protocol
 
@@ -9,7 +9,9 @@ import java.util.regex.Pattern
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
 import play.api.http.Writeable
-import play.api.http.websocket.{ BinaryMessage, Message, TextMessage }
+import play.api.http.websocket.BinaryMessage
+import play.api.http.websocket.Message
+import play.api.http.websocket.TextMessage
 
 import scala.concurrent.duration._
 import play.api.libs.json._
@@ -26,7 +28,7 @@ import scala.concurrent.ExecutionContext
 sealed abstract class EngineIOTransport private (val name: String)
 
 object EngineIOTransport {
-  case object Polling extends EngineIOTransport("polling")
+  case object Polling   extends EngineIOTransport("polling")
   case object WebSocket extends EngineIOTransport("websocket")
 
   def fromName(name: String) = name match {
@@ -39,21 +41,26 @@ object EngineIOTransport {
 /**
  * Open message, sent in response to an open request.
  */
-case class EngineIOOpenMessage(sid: String, upgrades: Seq[EngineIOTransport], pingInterval: FiniteDuration, pingTimeout: FiniteDuration)
+case class EngineIOOpenMessage(
+    sid: String,
+    upgrades: Seq[EngineIOTransport],
+    pingInterval: FiniteDuration,
+    pingTimeout: FiniteDuration
+)
 
 object EngineIOOpenMessage {
   implicit val reads: Reads[EngineIOOpenMessage] = (
     (__ \ "sid").read[String] ~
-    (__ \ "upgrades").readWithDefault[Seq[String]](Nil).map(_.map(EngineIOTransport.fromName)) ~
-    (__ \ "pingInterval").read[Long].map(_.millis) ~
-    (__ \ "pingTimeout").read[Long].map(_.millis)
+      (__ \ "upgrades").readWithDefault[Seq[String]](Nil).map(_.map(EngineIOTransport.fromName)) ~
+      (__ \ "pingInterval").read[Long].map(_.millis) ~
+      (__ \ "pingTimeout").read[Long].map(_.millis)
   ).apply(EngineIOOpenMessage.apply _)
 
   implicit val writes: Writes[EngineIOOpenMessage] = (
     (__ \ "sid").write[String] ~
-    (__ \ "upgrades").write[Seq[String]].contramap[Seq[EngineIOTransport]](_.map(_.name)) ~
-    (__ \ "pingInterval").write[Long].contramap[FiniteDuration](_.toMillis) ~
-    (__ \ "pingTimeout").write[Long].contramap[FiniteDuration](_.toMillis)
+      (__ \ "upgrades").write[Seq[String]].contramap[Seq[EngineIOTransport]](_.map(_.name)) ~
+      (__ \ "pingInterval").write[Long].contramap[FiniteDuration](_.toMillis) ~
+      (__ \ "pingTimeout").write[Long].contramap[FiniteDuration](_.toMillis)
   ).apply(o => (o.sid, o.upgrades, o.pingInterval, o.pingTimeout))
 }
 
@@ -61,18 +68,18 @@ object EngineIOOpenMessage {
  * Engine IO packet type.
  */
 sealed abstract class EngineIOPacketType private (val id: Int) {
-  val asciiEncoded: String = id.toString
+  val asciiEncoded: String      = id.toString
   val binaryEncoded: ByteString = ByteString(id)
 }
 
 object EngineIOPacketType {
-  case object Open extends EngineIOPacketType(0)
-  case object Close extends EngineIOPacketType(1)
-  case object Ping extends EngineIOPacketType(2)
-  case object Pong extends EngineIOPacketType(3)
+  case object Open    extends EngineIOPacketType(0)
+  case object Close   extends EngineIOPacketType(1)
+  case object Ping    extends EngineIOPacketType(2)
+  case object Pong    extends EngineIOPacketType(3)
   case object Message extends EngineIOPacketType(4)
   case object Upgrade extends EngineIOPacketType(5)
-  case object Noop extends EngineIOPacketType(6)
+  case object Noop    extends EngineIOPacketType(6)
 
   def fromChar(char: Char) = fromBinary((char - '0').toByte)
 
@@ -114,17 +121,21 @@ object EngineIOPacket {
    *
    * Binary packets are mapped to binary messages, text packets to text messages.
    */
-  implicit def webSocketTransformer: MessageFlowTransformer[EngineIOPacket, EngineIOPacket] = new MessageFlowTransformer[EngineIOPacket, EngineIOPacket] {
-    override def transform(flow: Flow[EngineIOPacket, EngineIOPacket, _]) = {
-      Flow[Message] collect {
-        case TextMessage(text)    => Utf8EngineIOPacket.decode(text)
-        case BinaryMessage(bytes) => BinaryEngineIOPacket.decode(bytes)
-      } via flow map {
-        case BinaryEngineIOPacket(typeId, bytes) => BinaryMessage(typeId.binaryEncoded ++ bytes)
-        case Utf8EngineIOPacket(typeId, text)    => TextMessage(typeId.asciiEncoded + text)
+  implicit def webSocketTransformer: MessageFlowTransformer[EngineIOPacket, EngineIOPacket] =
+    new MessageFlowTransformer[EngineIOPacket, EngineIOPacket] {
+      override def transform(flow: Flow[EngineIOPacket, EngineIOPacket, _]) = {
+        Flow[Message]
+          .collect {
+            case TextMessage(text)    => Utf8EngineIOPacket.decode(text)
+            case BinaryMessage(bytes) => BinaryEngineIOPacket.decode(bytes)
+          }
+          .via(flow)
+          .map {
+            case BinaryEngineIOPacket(typeId, bytes) => BinaryMessage(typeId.binaryEncoded ++ bytes)
+            case Utf8EngineIOPacket(typeId, text)    => TextMessage(typeId.asciiEncoded + text)
+          }
       }
     }
-  }
 }
 
 case class BinaryEngineIOPacket(typeId: EngineIOPacketType, data: ByteString) extends EngineIOPacket {
@@ -206,32 +217,36 @@ object EngineIOPayload {
    *
    * Can parse bodies as plain text, binary octets, or forms (forms are used by jsonp transport mode).
    */
-  def parser(parsers: PlayBodyParsers)(implicit ec: ExecutionContext): BodyParser[Option[EngineIOPayload]] = BodyParser { req =>
-    if (req.method == "POST") {
-      req.contentType match {
+  def parser(parsers: PlayBodyParsers)(implicit ec: ExecutionContext): BodyParser[Option[EngineIOPayload]] =
+    BodyParser { req =>
+      if (req.method == "POST") {
+        req.contentType match {
 
-        case Some("text/plain") =>
-          parsers.tolerantText.map(text => Some(Utf8EngineIOPayloadEncoding.decode(text))).apply(req)
+          case Some("text/plain") =>
+            parsers.tolerantText.map(text => Some(Utf8EngineIOPayloadEncoding.decode(text))).apply(req)
 
-        case Some("application/octet-stream") =>
-          new ByteStringBodyParser(parsers).byteString.map(bytes =>
-            Some(BinaryEngineIOPayloadEncoding.decode(bytes))).apply(req)
+          case Some("application/octet-stream") =>
+            new ByteStringBodyParser(parsers).byteString
+              .map(bytes => Some(BinaryEngineIOPayloadEncoding.decode(bytes)))
+              .apply(req)
 
-        case Some("application/x-www-form-urlencoded") =>
-          parsers.tolerantFormUrlEncoded.map { form =>
-            val payload = form.get("d").flatMap(_.headOption).getOrElse {
-              throw EngineIOEncodingException("Form payloads must supply the parameter in a field named 'd'")
-            }
-            Some(Utf8EngineIOPayloadEncoding.decode(payload))
-          }.apply(req)
+          case Some("application/x-www-form-urlencoded") =>
+            parsers.tolerantFormUrlEncoded
+              .map { form =>
+                val payload = form.get("d").flatMap(_.headOption).getOrElse {
+                  throw EngineIOEncodingException("Form payloads must supply the parameter in a field named 'd'")
+                }
+                Some(Utf8EngineIOPayloadEncoding.decode(payload))
+              }
+              .apply(req)
 
-        case other =>
-          Accumulator.done(Left(Results.Ok("Bad content type")))
+          case other =>
+            Accumulator.done(Left(Results.Ok("Bad content type")))
+        }
+      } else {
+        Accumulator.done(Right(None))
       }
-    } else {
-      Accumulator.done(Right(None))
     }
-  }
 }
 
 /**
@@ -240,11 +255,11 @@ object EngineIOPayload {
 object BinaryEngineIOPayloadEncoding {
 
   val StringPacketByte: Byte = 0
-  val StringPacketBytes = ByteString(StringPacketByte)
+  val StringPacketBytes      = ByteString(StringPacketByte)
   val BinaryPacketByte: Byte = 1
-  val BinaryPacketBytes = ByteString(BinaryPacketByte)
+  val BinaryPacketBytes      = ByteString(BinaryPacketByte)
   val LengthTerminator: Byte = 255.toByte
-  val LengthTerminatorBytes = ByteString(LengthTerminator)
+  val LengthTerminatorBytes  = ByteString(LengthTerminator)
 
   def encode(payload: EngineIOPayload): ByteString = {
     payload.packets.foldLeft(ByteString.empty)((bytes, packet) => bytes ++ encodePacket(packet))
@@ -255,10 +270,14 @@ object BinaryEngineIOPayloadEncoding {
     // we turn the binary payload into an array of numbers, one for each byte.
     val payloadBytes = encode(payload)
 
-    val payloadCommaSeparatedBytes = ByteString(payloadBytes.map {
-      case positive if positive >= 0 => positive.toString
-      case negative if negative < 0  => (negative.toInt + 256).toString
-    }.mkString(","))
+    val payloadCommaSeparatedBytes = ByteString(
+      payloadBytes
+        .map {
+          case positive if positive >= 0 => positive.toString
+          case negative if negative < 0  => (negative.toInt + 256).toString
+        }
+        .mkString(",")
+    )
 
     ByteString("___eio[") ++ ByteString(callback) ++
       ByteString(")]({\"type\":\"Buffer\",\"data\":[") ++ payloadCommaSeparatedBytes ++
@@ -303,7 +322,6 @@ object BinaryEngineIOPayloadEncoding {
   private def decodePacket(bytes: ByteString): (EngineIOPacket, ByteString) = {
     bytes.head match {
       case packetEncoding @ (StringPacketByte | BinaryPacketByte) =>
-
         val lengthTerminator = bytes.indexOf(LengthTerminator)
 
         if (lengthTerminator < 0) {
@@ -313,7 +331,9 @@ object BinaryEngineIOPayloadEncoding {
         val length = decodeInt(bytes.slice(1, lengthTerminator))
 
         if (bytes.size < lengthTerminator + length + 1) {
-          throw EngineIOEncodingException(s"Parsed packet length of $length but only ${bytes.size - lengthTerminator - 1} bytes are available")
+          throw EngineIOEncodingException(
+            s"Parsed packet length of $length but only ${bytes.size - lengthTerminator - 1} bytes are available"
+          )
         }
 
         if (length == 0) {
@@ -402,20 +422,24 @@ object Utf8EngineIOPayloadEncoding {
   private def decodePacket(text: String, startIndex: Int): (EngineIOPacket, Int) = {
     val matcher = PacketHeaderPattern.matcher(text)
     if (matcher.find(startIndex)) {
-      val length = matcher.group(1).toInt
-      val binary = matcher.group(2) == "b"
+      val length     = matcher.group(1).toInt
+      val binary     = matcher.group(2) == "b"
       val packetType = EngineIOPacketType.fromChar(matcher.group(3).head)
       if (binary) {
         val endOfMessage = matcher.end() + length - 2
         if (endOfMessage > text.length) {
-          throw EngineIOEncodingException(s"Parsed packet length of $length but only ${text.length - matcher.end() + 2} bytes are available.")
+          throw EngineIOEncodingException(
+            s"Parsed packet length of $length but only ${text.length - matcher.end() + 2} bytes are available."
+          )
         }
         val data = ByteString(Base64.getDecoder.decode(text.substring(matcher.end(), endOfMessage)))
         BinaryEngineIOPacket(packetType, data) -> endOfMessage
       } else {
         val codePointCount = text.codePointCount(matcher.end(), text.length)
         if (codePointCount < length - 1) {
-          throw EngineIOEncodingException(s"Parsed packet length of $length but only ${codePointCount + 1} bytes are available.")
+          throw EngineIOEncodingException(
+            s"Parsed packet length of $length but only ${codePointCount + 1} bytes are available."
+          )
         }
         val (data, endIndex) = extractCodePoints(text, matcher.end(), length - 1)
         Utf8EngineIOPacket(packetType, data) -> endIndex
@@ -427,7 +451,7 @@ object Utf8EngineIOPayloadEncoding {
   }
 
   private def extractCodePoints(text: String, startIndex: Int, length: Int): (String, Int) = {
-    var count = 0
+    var count    = 0
     var endIndex = startIndex
     while (count < length) {
       if (text(endIndex).isSurrogate) {

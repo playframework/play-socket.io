@@ -1,17 +1,26 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
  */
 package play.socketio.scaladsl
 
-import akka.stream.{ Materializer, OverflowStrategy }
-import akka.stream.scaladsl.{ BroadcastHub, Flow, Keep, Sink, Source }
-import controllers.{ AssetsComponents, ExternalAssets }
+import akka.stream.Materializer
+import akka.stream.OverflowStrategy
+import akka.stream.scaladsl.BroadcastHub
+import akka.stream.scaladsl.Flow
+import akka.stream.scaladsl.Keep
+import akka.stream.scaladsl.Sink
+import akka.stream.scaladsl.Source
+import controllers.AssetsComponents
+import controllers.ExternalAssets
 import play.api._
 import play.api.libs.json.JsString
 import play.api.routing.Router
 import play.engineio.EngineIOController
-import play.socketio.scaladsl.SocketIOEventCodec.{ SocketIOEventsDecoder, SocketIOEventsEncoder }
-import play.socketio.{ SocketIOEvent, TestSocketIOApplication, TestSocketIOServer }
+import play.socketio.scaladsl.SocketIOEventCodec.SocketIOEventsDecoder
+import play.socketio.scaladsl.SocketIOEventCodec.SocketIOEventsEncoder
+import play.socketio.SocketIOEvent
+import play.socketio.TestSocketIOApplication
+import play.socketio.TestSocketIOServer
 
 import scala.concurrent.ExecutionContext
 
@@ -24,7 +33,9 @@ object TestSocketIOScalaApplication extends TestSocketIOScalaApplication(Map.emp
 
 class TestSocketIOScalaApplication(initialSettings: Map[String, AnyRef]) extends TestSocketIOApplication {
 
-  def createApplication(routerBuilder: (ExternalAssets, EngineIOController, ExecutionContext) => Router): Application = {
+  def createApplication(
+      routerBuilder: (ExternalAssets, EngineIOController, ExecutionContext) => Router
+  ): Application = {
 
     val components = createComponents(routerBuilder)
 
@@ -36,12 +47,16 @@ class TestSocketIOScalaApplication(initialSettings: Map[String, AnyRef]) extends
     components.application
   }
 
-  def createComponents(routerBuilder: (ExternalAssets, EngineIOController, ExecutionContext) => Router): BuiltInComponents = {
+  def createComponents(
+      routerBuilder: (ExternalAssets, EngineIOController, ExecutionContext) => Router
+  ): BuiltInComponents = {
 
-    val components = new BuiltInComponentsFromContext(ApplicationLoader.createContext(
-      Environment.simple(),
-      initialSettings = initialSettings
-    )) with SocketIOComponents with AssetsComponents {
+    val components = new BuiltInComponentsFromContext(
+      ApplicationLoader.createContext(
+        Environment.simple(),
+        initialSettings = initialSettings
+      )
+    ) with SocketIOComponents with AssetsComponents {
 
       LoggerConfigurator(environment.classLoader).foreach(_.configure(environment))
       lazy val extAssets = new ExternalAssets(environment)(executionContext, fileMimeTypes)
@@ -61,7 +76,8 @@ class TestSocketIOScalaApplication(initialSettings: Map[String, AnyRef]) extends
     }
 
     val (testDisconnectQueue, testDisconnectFlow) = {
-      val (sourceQueue, source) = Source.queue[SocketIOEvent](10, OverflowStrategy.backpressure).toMat(BroadcastHub.sink)(Keep.both).run
+      val (sourceQueue, source) =
+        Source.queue[SocketIOEvent](10, OverflowStrategy.backpressure).toMat(BroadcastHub.sink)(Keep.both).run
       (sourceQueue, Flow.fromSinkAndSource(Sink.ignore, source))
     }
 
@@ -75,11 +91,12 @@ class TestSocketIOScalaApplication(initialSettings: Map[String, AnyRef]) extends
       }
       .defaultNamespace(decoder, encoder, Flow[SocketIOEvent])
       .addNamespace(decoder, encoder) {
-        case (session, "/test") => Flow[SocketIOEvent].takeWhile(_.name != "disconnect me").watchTermination() { (_, terminated) =>
-          terminated.onComplete { _ =>
-            testDisconnectQueue.offer(SocketIOEvent("test disconnect", Seq(Left(JsString(session.sid))), None))
+        case (session, "/test") =>
+          Flow[SocketIOEvent].takeWhile(_.name != "disconnect me").watchTermination() { (_, terminated) =>
+            terminated.onComplete { _ =>
+              testDisconnectQueue.offer(SocketIOEvent("test disconnect", Seq(Left(JsString(session.sid))), None))
+            }
           }
-        }
       }
       .addNamespace(decoder, encoder) {
         case (_, "/failable") =>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
  */
 package play.socketio
 
@@ -42,6 +42,7 @@ case class SocketIOSession[+T](sid: String, data: T)
 case class SocketIOEvent(name: String, arguments: Seq[Either[JsValue, ByteString]], ack: Option[SocketIOEventAck])
 
 object SocketIOEvent {
+
   /**
    * Create an unnamed event.
    *

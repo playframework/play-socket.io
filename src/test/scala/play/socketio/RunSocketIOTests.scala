@@ -31,8 +31,7 @@ object RunSocketIOTests extends App {
 
   val chromeOptions: ChromeOptions             = new ChromeOptions()
   val chromeDriverService: ChromeDriverService = ChromeDriverService.createDefaultService()
-
-  val driver = new ChromeDriver(chromeDriverService, chromeOptions)
+  val driver                                   = new ChromeDriver(chromeDriverService, chromeOptions)
 
   Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
     def run(): Unit = driver.quit()

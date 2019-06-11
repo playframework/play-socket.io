@@ -38,7 +38,7 @@ lazy val root = (project in file("."))
       // Test dependencies for running chrome driver
       "org.seleniumhq.selenium" % "selenium-chrome-driver" % "3.141.59",
       // Test framework dependencies
-      "org.scalatest" %% "scalatest"      % "3.0.7" % Test,
+      "org.scalatest" %% "scalatest"      % "3.0.8" % Test,
       "com.novocode"  % "junit-interface" % "0.11"  % Test
     ),
     PB.targets in Compile := Seq(

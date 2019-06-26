@@ -8,5 +8,5 @@ addSbtPlugin("org.scalameta"     % "sbt-scalafmt"    % "2.0.1")
 addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.7.2")
 
 // Protobuf
-addSbtPlugin(("com.thesamet" % "sbt-protoc" % "0.99.21").exclude("com.trueaccord.scalapb", "protoc-bridge_2.10"))
+addSbtPlugin(("com.thesamet" % "sbt-protoc" % "0.99.23").exclude("com.trueaccord.scalapb", "protoc-bridge_2.10"))
 libraryDependencies += "com.trueaccord.scalapb" %% "compilerplugin-shaded" % "0.6.7"

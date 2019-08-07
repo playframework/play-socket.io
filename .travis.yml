@@ -1,4 +1,7 @@
 language: scala
+dist: xenial
+services:
+  - xvfb
 scala:
   - 2.12.8
   - 2.11.12
@@ -24,11 +27,9 @@ install: jabba install "$TRAVIS_JDK" && jabba use "$_" && java -Xmx32m -version
 
 before_script:
   - mkdir -p $HOME/tmp/bin
-  - pushd $HOME/tmp/bin && wget https://chromedriver.storage.googleapis.com/74.0.3729.6/chromedriver_linux64.zip && unzip chromedriver_linux64.zip && popd
+  - pushd $HOME/tmp/bin && wget https://chromedriver.storage.googleapis.com/76.0.3809.68/chromedriver_linux64.zip && unzip chromedriver_linux64.zip && popd
   - chmod -vv +x $HOME/tmp/bin/*
   - export PATH=$HOME/tmp/bin:$PATH
-  - Xvfb :99 +extension RANDR 2>/dev/null &
-  - sleep 5 # give xvfb some time to start
 
 script:
   - sbt ++$TRAVIS_SCALA_VERSION test

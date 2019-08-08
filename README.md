@@ -40,4 +40,4 @@ The test runner runs the tests against each of these backends, using phantomjs a
 
 The Play backed socket.io support library is *[Incubating][]*.
 
-[Incubating]: https://developer.lightbend.com/docs/reactive-platform/2.0/support-terminology/index.html#incubating
+[Incubating]: https://developer.lightbend.com/docs/lightbend-platform/introduction/getting-help/support-terminology.html#incubating

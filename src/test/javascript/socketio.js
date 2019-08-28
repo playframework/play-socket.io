@@ -150,6 +150,7 @@ modes.forEach(function (mode) {
       });
       socket.on("connect", function() {
         socket.disconnect();
+        done();
       });
     });
 

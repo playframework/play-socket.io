@@ -1,4 +1,4 @@
-addSbtPlugin("com.typesafe.play" % "interplay" % sys.props.get("interplay.version").getOrElse("2.0.8"))
+addSbtPlugin("com.typesafe.play" % "interplay" % sys.props.get("interplay.version").getOrElse("2.0.9"))
 
 addSbtPlugin("com.typesafe"      % "sbt-mima-plugin" % "0.6.0")
 addSbtPlugin("org.scoverage"     % "sbt-scoverage"   % "1.6.0")

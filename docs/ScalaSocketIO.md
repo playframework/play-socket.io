@@ -67,17 +67,17 @@ class MySocketIOEngineProvider @Inject() (socketIO: SocketIO)
 }
 ```
 
-The above creates the simplest socket.io engine possible - it ignores all incoming events, and produces no outgoing events, and provides no namespaces. If you want to do something useful, you'll have to configure the builder before creating the controller. Having done that, you can bind that provider in your applications Guice module:
+The above creates the simplest socket.io engine possible - it ignores all incoming events, and produces no outgoing events, and provides no namespaces. If you want to do something useful, you'll have to configure the builder before creating the controller. Having done that, you can bind that provider in your application's Guice module:
 
 ```scala
-import play.api._
-import play.api.inject.Module
+import com.google.inject.AbstractModule
 import play.engineio.EngineIOController
+import socket.MySocketIOEngineProvider
 
-class MyModule extends Module {
-  override def bindings(environment: Environment, configuration: Configuration) = Seq(
-    bind[EngineIOController].toProvider[MySocketIOEngineProvider]
-  )
+class MyModule extends AbstractModule {
+  override def configure() = {
+    bind(classOf[EngineIOController]).toProvider(classOf[MySocketIOEngineProvider])
+  }
 }
 ```
 

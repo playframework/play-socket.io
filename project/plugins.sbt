@@ -1,7 +1,7 @@
 addSbtPlugin("com.typesafe.play" % "interplay" % sys.props.get("interplay.version").getOrElse("2.1.1"))
 
 addSbtPlugin("com.typesafe"      % "sbt-mima-plugin" % "0.6.0")
-addSbtPlugin("org.scoverage"     % "sbt-scoverage"   % "1.6.0")
+addSbtPlugin("org.scoverage"     % "sbt-scoverage"   % "1.6.1")
 addSbtPlugin("de.heikoseeberger" % "sbt-header"      % "5.2.0")
 addSbtPlugin("org.scalameta"     % "sbt-scalafmt"    % "2.0.2")
 

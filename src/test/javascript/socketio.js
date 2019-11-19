@@ -45,7 +45,7 @@ modes.forEach(function (mode) {
     var socket;
     var manager;
 
-    this.timeout(5000);
+    this.timeout(10000); // 10 seconds
 
     function connect(uri, opts) {
       socket = manager.socket(uri, opts);

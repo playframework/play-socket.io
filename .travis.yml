@@ -1,19 +1,7 @@
 language: scala
-dist: xenial
+
 services:
   - xvfb
-scala:
-  - 2.12.8
-  - 2.11.12
-
-env:
-  global:
-    - CHROME_BIN=/usr/bin/google-chrome
-    - DBUS_SESSION_BUS_ADDRESS=/dev/null
-    - DISPLAY=:99.0
-  matrix:
-    - TRAVIS_JDK=adopt@1.11.0-3
-    - TRAVIS_JDK=adopt@1.8.212-03
 
 addons:
   chrome: stable
@@ -22,19 +10,32 @@ addons:
       - unzip
       - dbus-x11
 
+scala:
+  - 2.12.10
+  - 2.11.12
+
+env:
+  global:
+    - CHROME_BIN=/usr/bin/google-chrome
+    - DBUS_SESSION_BUS_ADDRESS=/dev/null
+  matrix:
+    - TRAVIS_JDK=8
+    - TRAVIS_JDK=11
+
 before_install: curl -Ls https://git.io/jabba | bash && . ~/.jabba/jabba.sh
-install: jabba install "$TRAVIS_JDK" && jabba use "$_" && java -Xmx32m -version
+install: jabba install "adopt@~1.$TRAVIS_JDK.0-0" && jabba use "$_" && java -Xmx32m -version
 
 before_script:
+  # Chrome version format can be x.x.x or x.x.x.x. We just want the three first numbers
+  - chrome_version=$(google-chrome --version | grep -oP "(\d{1,}\.\d{1,}\.\d{1,})")
+  # This will give us the chromedriver version that is compatible with the installed chrome
+  - chromedriver_version=$(curl "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${chrome_version}")
   - mkdir -p $HOME/tmp/bin
-  - pushd $HOME/tmp/bin && wget https://chromedriver.storage.googleapis.com/76.0.3809.68/chromedriver_linux64.zip && unzip chromedriver_linux64.zip && popd
+  - pushd $HOME/tmp/bin && wget "https://chromedriver.storage.googleapis.com/${chromedriver_version}/chromedriver_linux64.zip" && unzip chromedriver_linux64.zip && popd
   - chmod -vv +x $HOME/tmp/bin/*
   - export PATH=$HOME/tmp/bin:$PATH
 
-script:
-  - sbt ++$TRAVIS_SCALA_VERSION test
-  - sbt ++$TRAVIS_SCALA_VERSION headerCheck test:headerCheck
-  - sbt scalafmtCheckAll scalafmtSbtCheck
+script: sbt ++$TRAVIS_SCALA_VERSION test headerCheck test:headerCheck scalafmtSbtCheck
 
 cache:
   directories:

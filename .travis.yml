@@ -35,7 +35,9 @@ before_script:
   - chmod -vv +x $HOME/tmp/bin/*
   - export PATH=$HOME/tmp/bin:$PATH
 
-script: sbt ++$TRAVIS_SCALA_VERSION test headerCheck test:headerCheck scalafmtSbtCheck
+script:
+  - sbt ++$TRAVIS_SCALA_VERSION test headerCheck test:headerCheck scalafmtSbtCheck
+  - sbt ++$TRAVIS_SCALA_VERSION samples/test
 
 cache:
   directories:

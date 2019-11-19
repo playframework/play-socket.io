@@ -21,6 +21,7 @@ lazy val root = (project in file("."))
   .settings(
     organization := "com.lightbend.play",
     name := "play-socket-io",
+    scalaVersion := scala212,
     crossScalaVersions := Seq(scala212, scala211),
     scalacOptions ++= Seq("-feature", "-Xfatal-warnings", "-target:jvm-1.8"),
     scalacOptions in (Compile, doc) := Nil,

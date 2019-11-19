@@ -11,7 +11,7 @@ addons:
       - dbus-x11
 
 scala:
-  - 2.12.8
+  - 2.12.10
   - 2.11.12
 
 env:
@@ -19,11 +19,11 @@ env:
     - CHROME_BIN=/usr/bin/google-chrome
     - DBUS_SESSION_BUS_ADDRESS=/dev/null
   matrix:
-    - TRAVIS_JDK=adopt@1.11.0-3
-    - TRAVIS_JDK=adopt@1.8.212-03
+    - TRAVIS_JDK=8
+    - TRAVIS_JDK=11
 
 before_install: curl -Ls https://git.io/jabba | bash && . ~/.jabba/jabba.sh
-install: jabba install "$TRAVIS_JDK" && jabba use "$_" && java -Xmx32m -version
+install: jabba install "adopt@~1.$TRAVIS_JDK.0-0" && jabba use "$_" && java -Xmx32m -version
 
 before_script:
   # Chrome version format can be x.x.x or x.x.x.x. We just want the three first numbers

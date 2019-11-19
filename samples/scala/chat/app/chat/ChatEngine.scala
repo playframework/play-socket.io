@@ -1,15 +1,21 @@
+/*
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
+ */
 package chat
 
 import akka.stream.Materializer
-import akka.stream.scaladsl.{BroadcastHub, Flow, Keep, MergeHub}
+import akka.stream.scaladsl.BroadcastHub
+import akka.stream.scaladsl.Flow
+import akka.stream.scaladsl.Keep
+import akka.stream.scaladsl.MergeHub
 import play.api.libs.json.Format
 import play.engineio.EngineIOController
 import play.api.libs.functional.syntax._
 import play.socketio.scaladsl.SocketIO
 
 /**
-  * A simple chat engine.
-  */
+ * A simple chat engine.
+ */
 class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
 
   import play.socketio.scaladsl.SocketIOEventCodec._
@@ -30,8 +36,10 @@ class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
     // BroadcastHub to broadcast them out again to all the connected users.
     // See http://doc.akka.io/docs/akka/snapshot/scala/stream/stream-dynamic.html
     // for details on these features.
-    val (sink, source) = MergeHub.source[String]
-      .toMat(BroadcastHub.sink)(Keep.both).run
+    val (sink, source) = MergeHub
+      .source[String]
+      .toMat(BroadcastHub.sink)(Keep.both)
+      .run
 
     // We couple the sink and source together so that one completes, the other
     // will to, and we use this to handle our chat

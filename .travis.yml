@@ -37,7 +37,7 @@ before_script:
 
 script:
   - sbt ++$TRAVIS_SCALA_VERSION test headerCheck test:headerCheck scalafmtSbtCheck
-  - sbt ++$TRAVIS_SCALA_VERSION samples/test
+  - sbt ++$TRAVIS_SCALA_VERSION samples/test samples/headerCheck samples/test:headerCheck samples/scalafmtCheckAll samples/scalafmtSbtCheck
 
 cache:
   directories:

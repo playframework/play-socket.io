@@ -1,3 +1,6 @@
+/*
+ * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
+ */
 package chat;
 
 import akka.NotUsed;

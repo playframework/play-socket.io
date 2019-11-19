@@ -23,7 +23,6 @@ class MyApplicationLoader extends ApplicationLoader {
 }
 
 trait MyApplication extends BuiltInComponents with AssetsComponents with SocketIOComponents {
-
   lazy val chatEngine                             = wire[ChatEngine]
   lazy val engineIOController: EngineIOController = chatEngine.controller
 

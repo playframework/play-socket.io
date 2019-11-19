@@ -17,7 +17,6 @@ import play.socketio.scaladsl.SocketIO
  * A simple chat engine.
  */
 class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
-
   import play.socketio.scaladsl.SocketIOEventCodec._
 
   // This will decode String "chat message" events coming in

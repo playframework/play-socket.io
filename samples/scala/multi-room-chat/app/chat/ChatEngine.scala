@@ -20,7 +20,6 @@ import play.socketio.scaladsl.SocketIO
 import scala.collection.concurrent.TrieMap
 
 object ChatProtocol {
-
   /**
    * A chat event, either a message, a join room, or a leave room event.
    */
@@ -66,7 +65,6 @@ object ChatProtocol {
 }
 
 class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
-
   import ChatProtocol._
 
   // All the chat rooms
@@ -89,12 +87,10 @@ class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
         .to(sink),
       source
     )
-
   }
 
   // Creates a chat flow for a user session
   def userChatFlow(user: User): Flow[ChatEvent, ChatEvent, NotUsed] = {
-
     // broadcast source and sink for demux/muxing multiple chat rooms in this one flow
     // They'll be provided later when we materialize the flow
     var broadcastSource: Source[ChatEvent, NotUsed] = null
@@ -126,7 +122,6 @@ class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
           ChatMessage(Some(user), room, message)
 
         case other => other
-
       }
       .via {
         Flow.fromSinkAndSourceCoupledMat(BroadcastHub.sink[ChatEvent], MergeHub.source[ChatEvent]) { (source, sink) =>

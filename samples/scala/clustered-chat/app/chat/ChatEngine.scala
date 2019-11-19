@@ -72,7 +72,6 @@ object ChatEngine {
 }
 
 class ChatEngine(socketIO: SocketIO, system: ActorSystem)(implicit mat: Materializer) {
-
   import ChatEngine._
   import ChatProtocol._
 
@@ -80,7 +79,6 @@ class ChatEngine(socketIO: SocketIO, system: ActorSystem)(implicit mat: Material
 
   // This gets a chat room using Akka distributed pubsub
   private def getChatRoom(user: User, room: String) = {
-
     // Create a sink that sends all the messages to the chat room
     val sink = Sink.foreach[ChatEvent] { message =>
       mediator ! Publish(room, message)
@@ -105,7 +103,6 @@ class ChatEngine(socketIO: SocketIO, system: ActorSystem)(implicit mat: Material
 
   // Creates a chat flow for a user session
   def userChatFlow(user: User): Flow[ChatEvent, ChatEvent, NotUsed] = {
-
     // broadcast source and sink for demux/muxing multiple chat rooms in this one flow
     // They'll be provided later when we materialize the flow
     var broadcastSource: Source[ChatEvent, NotUsed] = null
@@ -137,7 +134,6 @@ class ChatEngine(socketIO: SocketIO, system: ActorSystem)(implicit mat: Material
           ChatMessage(Some(user), room, message)
 
         case other => other
-
       }
       .via {
         Flow.fromSinkAndSourceCoupledMat(BroadcastHub.sink[ChatEvent], MergeHub.source[ChatEvent]) { (source, sink) =>

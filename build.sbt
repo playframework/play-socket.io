@@ -2,7 +2,7 @@ import play.core.PlayVersion.{ current => playVersion }
 import interplay.ScalaVersions._
 
 val scala211    = "2.11.12"
-val AkkaVersion = "2.5.26"
+val AkkaVersion = "2.5.23"
 
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
 
@@ -21,7 +21,8 @@ lazy val root = (project in file("."))
   .settings(
     organization := "com.lightbend.play",
     name := "play-socket-io",
-    crossScalaVersions := Seq(scala212, scala211),
+    scalaVersion := scala213,
+    crossScalaVersions := Seq(scala213, scala212, scala211),
     scalacOptions ++= Seq("-feature", "-Xfatal-warnings", "-target:jvm-1.8"),
     scalacOptions in (Compile, doc) := Nil,
     javacOptions ++= Seq("-Xlint"),
@@ -70,7 +71,7 @@ lazy val scalaChat = (project in file("samples/scala/chat"))
   .settings(
     name := "play-socket.io-scala-chat-example",
     organization := "com.lightbend.play",
-    scalaVersion := scala212,
+    scalaVersion := scala213,
     libraryDependencies += macwire % Provided
   )
 
@@ -80,7 +81,7 @@ lazy val scalaMultiRoomChat = (project in file("samples/scala/multi-room-chat"))
   .settings(
     name := "play-socket.io-scala-multi-room-chat-example",
     organization := "com.lightbend.play",
-    scalaVersion := scala212,
+    scalaVersion := scala213,
     libraryDependencies += macwire % Provided
   )
 
@@ -90,7 +91,7 @@ lazy val scalaClusteredChat = (project in file("samples/scala/clustered-chat"))
   .settings(
     name := "play-socket.io-scala-clustered-chat-example",
     organization := "com.lightbend.play",
-    scalaVersion := scala212,
+    scalaVersion := scala213,
     libraryDependencies ++= Seq(macwire % Provided) ++ akkaCluster
   )
 
@@ -100,7 +101,7 @@ lazy val javaChat = (project in file("samples/java/chat"))
   .settings(
     name := "play-socket.io-java-chat-example",
     organization := "com.lightbend.play",
-    scalaVersion := scala212,
+    scalaVersion := scala213,
     libraryDependencies += guice
   )
 
@@ -110,7 +111,7 @@ lazy val javaMultiRoomChat = (project in file("samples/java/multi-room-chat"))
   .settings(
     name := "play-socket.io-java-multi-room-chat-example",
     organization := "com.lightbend.play",
-    scalaVersion := scala212,
+    scalaVersion := scala213,
     libraryDependencies ++= Seq(guice, lombok)
   )
 
@@ -120,6 +121,6 @@ lazy val javaClusteredChat = (project in file("samples/java/clustered-chat"))
   .settings(
     name := "play-socket.io-java-clustered-chat-example",
     organization := "com.lightbend.play",
-    scalaVersion := scala212,
+    scalaVersion := scala213,
     libraryDependencies ++= Seq(guice, lombok) ++ akkaCluster
   )

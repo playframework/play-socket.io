@@ -16,7 +16,6 @@ trait SocketIOEventAck {
 
   def compose[T](f: T => Seq[Either[JsValue, ByteString]]): T => Unit = (args: T) => {
     SocketIOEventAck.this.apply(f(args))
-    ()
   }
 }
 

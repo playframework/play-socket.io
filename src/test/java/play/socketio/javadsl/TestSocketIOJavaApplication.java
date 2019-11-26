@@ -99,7 +99,7 @@ public class TestSocketIOJavaApplication implements TestSocketIOApplication {
                             new SocketIOEvent("test disconnect",
                                 JavaConverters.asScalaBufferConverter(
                                     Collections.<Either<JsValue, ByteString>>singletonList(Left.apply(JsString.apply(session.sid())))
-                                ).asScala(), Option.empty())
+                                ).asScala().toSeq(), Option.empty())
                         ))
                     )
             );

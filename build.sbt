@@ -1,7 +1,6 @@
 import play.core.PlayVersion.{ current => playVersion }
 import interplay.ScalaVersions._
 
-val scala211    = "2.11.12"
 val AkkaVersion = "2.5.23"
 
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
@@ -21,9 +20,9 @@ lazy val root = (project in file("."))
   .settings(
     organization := "com.lightbend.play",
     name := "play-socket-io",
-    scalaVersion := scala213,
-    crossScalaVersions := Seq(scala213, scala212, scala211),
-    scalacOptions ++= Seq("-feature", "-Xfatal-warnings", "-target:jvm-1.8"),
+    scalaVersion := scala212,
+    crossScalaVersions := Seq(scala213, scala212),
+    scalacOptions ++= Seq("-feature", "-target:jvm-1.8"),
     scalacOptions in (Compile, doc) := Nil,
     javacOptions ++= Seq("-Xlint"),
     libraryDependencies ++= Seq(

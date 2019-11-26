@@ -194,7 +194,7 @@ final class EngineIOController(
       }
       .takeWhile(!_.isInstanceOf[Close])
       .mapConcat {
-        case Packets(_, _, packets, _) => packets.to[immutable.Seq]
+        case Packets(_, _, packets: Seq[EngineIOPacket], _) => collection.immutable.Seq[EngineIOPacket](packets:_*)
       }
 
     Flow.fromSinkAndSourceCoupled(in, out)

@@ -26,9 +26,7 @@ import play.api.inject.Module
 import play.api.mvc._
 import play.engineio.EngineIOManagerActor._
 import play.engineio.protocol._
-import play.socketio.scaladsl.SocketIO
 
-import scala.collection.immutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.concurrent.duration._

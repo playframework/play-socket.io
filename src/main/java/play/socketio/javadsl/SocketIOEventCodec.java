@@ -19,8 +19,6 @@ import play.socketio.SocketIOEventAck;
 import scala.Option;
 import scala.Some;
 import scala.collection.JavaConverters;
-//import scala.collection.Seq;
-import scala.collection.immutable.List$;
 import scala.compat.java8.OptionConverters;
 import scala.util.Either;
 import scala.util.Left;

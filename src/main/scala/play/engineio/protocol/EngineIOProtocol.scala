@@ -373,7 +373,7 @@ object BinaryEngineIOPayloadEncoding {
  */
 object Utf8EngineIOPayloadEncoding {
   def encode(payload: EngineIOPayload): String = {
-    val builder = StringBuilder.newBuilder
+    val builder = new StringBuilder()
     payload.packets.foreach(encodePacket(builder))
     builder.toString
   }

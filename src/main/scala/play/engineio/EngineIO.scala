@@ -26,9 +26,7 @@ import play.api.inject.Module
 import play.api.mvc._
 import play.engineio.EngineIOManagerActor._
 import play.engineio.protocol._
-import play.socketio.scaladsl.SocketIO
 
-import scala.collection.immutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -194,7 +192,7 @@ final class EngineIOController(
       }
       .takeWhile(!_.isInstanceOf[Close])
       .mapConcat {
-        case Packets(_, _, packets, _) => packets.to[immutable.Seq]
+        case Packets(_, _, packets: Seq[EngineIOPacket], _) => collection.immutable.Seq[EngineIOPacket](packets:_*)
       }
 
     Flow.fromSinkAndSourceCoupled(in, out)

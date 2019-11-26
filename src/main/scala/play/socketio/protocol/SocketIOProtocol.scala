@@ -248,15 +248,15 @@ object SocketIOPacket {
       case (SocketIOPacketType.Disconnect, None) =>
         SocketIODisconnectPacket(namespace)
       case (SocketIOPacketType.Event, Some(data: JsArray)) =>
-        SocketIOEventPacket(namespace, data.value, index)
+        SocketIOEventPacket(namespace, data.value.toSeq, index)
       case (SocketIOPacketType.Ack, Some(data: JsArray)) if index.isDefined =>
-        SocketIOAckPacket(namespace, data.value, index.get)
+        SocketIOAckPacket(namespace, data.value.toSeq, index.get)
       case (SocketIOPacketType.Error, Some(data)) =>
         SocketIOErrorPacket(namespace, data)
       case (SocketIOPacketType.BinaryEvent, Some(data: JsArray)) =>
-        SocketIOBinaryEventPacket(namespace, data.value.map(Left.apply), index)
+        SocketIOBinaryEventPacket(namespace, data.value.map(Left.apply).toSeq, index)
       case (SocketIOPacketType.BinaryAck, Some(data: JsArray)) if index.isDefined =>
-        SocketIOBinaryAckPacket(namespace, data.value.map(Left.apply), index.get)
+        SocketIOBinaryAckPacket(namespace, data.value.map(Left.apply).toSeq, index.get)
       case _ =>
         throw SocketIOEncodingException(text, "Malformed socket.io packet")
     }

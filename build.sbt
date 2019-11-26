@@ -29,6 +29,7 @@ lazy val root = (project in file("."))
       // Production dependencies
       "com.typesafe.play" %% "play"        % playVersion,
       "com.typesafe.akka" %% "akka-remote" % AkkaVersion,
+      "com.typesafe.akka" %% "akka-slf4j"  % AkkaVersion,
       // Test dependencies for running a Play server
       "com.typesafe.play" %% "play-akka-http-server" % playVersion % Test,
       "com.typesafe.play" %% "play-logback"          % playVersion % Test,

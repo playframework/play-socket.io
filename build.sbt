@@ -60,7 +60,7 @@ lazy val root = (project in file("."))
       runChromeWebDriver.value
     },
     resolvers += "jitpack".at("https://jitpack.io"),
-    headerLicense := Some(HeaderLicense.Custom("Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>")),
+    headerLicense := Some(HeaderLicense.Custom("Copyright (C) 2017-2020 Lightbend Inc. <https://www.lightbend.com>")),
     headerEmptyLine := false
   )
 

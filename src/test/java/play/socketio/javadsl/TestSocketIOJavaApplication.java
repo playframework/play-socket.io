@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) Lightbend Inc. <https://www.lightbend.com>
  */
 package play.socketio.javadsl;
 
@@ -99,7 +99,7 @@ public class TestSocketIOJavaApplication implements TestSocketIOApplication {
                             new SocketIOEvent("test disconnect",
                                 JavaConverters.asScalaBufferConverter(
                                     Collections.<Either<JsValue, ByteString>>singletonList(Left.apply(JsString.apply(session.sid())))
-                                ).asScala(), Option.empty())
+                                ).asScala().toSeq(), Option.empty())
                         ))
                     )
             );

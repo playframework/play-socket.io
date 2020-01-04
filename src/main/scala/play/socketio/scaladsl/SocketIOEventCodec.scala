@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) Lightbend Inc. <https://www.lightbend.com>
  */
 package play.socketio.scaladsl
 
@@ -365,7 +365,7 @@ object SocketIOEventCodec {
       case (t, ack) =>
         SocketIOEvent.unnamed(
           Seq(first.encodeArg(t)),
-          Some(SocketIOEventAck.fromScala(ack.compose(decoder.decodeArgs)))
+          Some(SocketIOEventAck(ack.compose(decoder.decodeArgs)))
         )
     }
   }
@@ -409,7 +409,7 @@ object SocketIOEventCodec {
       case (t1, t2, ack) =>
         SocketIOEvent.unnamed(
           init.encodeArgs((t1, t2)),
-          Some(SocketIOEventAck.fromScala(ack.compose(decoder.decodeArgs)))
+          Some(SocketIOEventAck(ack.compose(decoder.decodeArgs)))
         )
     }
   }
@@ -453,7 +453,7 @@ object SocketIOEventCodec {
       case (t1, t2, t3, ack) =>
         SocketIOEvent.unnamed(
           init.encodeArgs((t1, t2, t3)),
-          Some(SocketIOEventAck.fromScala(ack.compose(decoder.decodeArgs)))
+          Some(SocketIOEventAck(ack.compose(decoder.decodeArgs)))
         )
     }
   }

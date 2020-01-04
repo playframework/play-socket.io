@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 Lightbend Inc. <https://www.lightbend.com>
+ * Copyright (C) Lightbend Inc. <https://www.lightbend.com>
  */
 package play.socketio
 
@@ -522,7 +522,7 @@ private case class DisconnectSocketIONamespace(namespace: Option[String], error:
 
 private class FlowCallbackAck(callback: SocketIOPacket => Unit, namespace: Option[String], id: Long)
     extends SocketIOEventAck {
-  override def apply(args: Seq[Either[JsValue, ByteString]]) = {
+  override def apply(args: Seq[Either[JsValue, ByteString]]): Unit = {
     if (args.forall(_.isLeft)) {
       callback(SocketIOAckPacket(namespace, args.collect {
         case Left(jsValue) => jsValue

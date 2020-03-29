@@ -8,5 +8,5 @@ addSbtPlugin("org.scalameta"     % "sbt-scalafmt"    % "2.0.7")
 addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.7.3")
 
 // Protobuf
-addSbtPlugin("com.thesamet" % "sbt-protoc" % "0.99.27")
+addSbtPlugin("com.thesamet" % "sbt-protoc" % "0.99.30")
 libraryDependencies += "com.thesamet.scalapb" %% "compilerplugin-shaded" % "0.9.6"

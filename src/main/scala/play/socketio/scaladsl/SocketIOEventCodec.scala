@@ -65,9 +65,12 @@ object SocketIOEventCodec {
       override def applyOrElse[A1 <: SocketIOEvent, B1 >: T](event: A1, default: (A1) => B1) = {
         decoders
           .andThen(decoder => decoder.apply(event))
-          .applyOrElse(event.name, { _: String =>
-            default(event)
-          })
+          .applyOrElse(
+            event.name,
+            { _: String =>
+              default(event)
+            }
+          )
       }
     }
 
@@ -79,10 +82,11 @@ object SocketIOEventCodec {
   /**
    * Create a socket.io decoder that decodes a single argument as binary.
    */
-  def decodeBytes: SocketIOArgDecoder[ByteString] = SocketIOArgDecoder {
-    case Left(_)      => throw new SocketIOEventCodecException("Expected binary argument")
-    case Right(bytes) => bytes
-  }
+  def decodeBytes: SocketIOArgDecoder[ByteString] =
+    SocketIOArgDecoder {
+      case Left(_)      => throw new SocketIOEventCodecException("Expected binary argument")
+      case Right(bytes) => bytes
+    }
 
   /**
    * Create a socket.io decoder that decodes no arguments.
@@ -192,9 +196,12 @@ object SocketIOEventCodec {
     def withMaybeAckEncoder[A](
         encoder: SocketIOArgsEncoder[A]
     ): SocketIOEventCodec.SocketIOEventDecoder[(T, Option[A => Unit])] = { event =>
-      (first(event), event.ack.map { ack =>
-        ack.compose(encoder.encodeArgs)
-      })
+      (
+        first(event),
+        event.ack.map { ack =>
+          ack.compose(encoder.encodeArgs)
+        }
+      )
     }
   }
 
@@ -258,9 +265,13 @@ object SocketIOEventCodec {
         encoder: SocketIOArgsEncoder[A]
     ): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, Option[A => Unit])] = { event =>
       val args = init(event)
-      (args._1, args._2, event.ack.map { ack =>
-        ack.compose(encoder.encodeArgs)
-      })
+      (
+        args._1,
+        args._2,
+        event.ack.map { ack =>
+          ack.compose(encoder.encodeArgs)
+        }
+      )
     }
   }
 
@@ -324,9 +335,14 @@ object SocketIOEventCodec {
         encoder: SocketIOArgsEncoder[A]
     ): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, T3, Option[A => Unit])] = { event =>
       val args = init(event)
-      (args._1, args._2, args._3, event.ack.map { ack =>
-        ack.compose(encoder.encodeArgs)
-      })
+      (
+        args._1,
+        args._2,
+        args._3,
+        event.ack.map { ack =>
+          ack.compose(encoder.encodeArgs)
+        }
+      )
     }
   }
 
@@ -490,9 +506,10 @@ object SocketIOArgsDecoder {
   /**
    * Create an args decoder from the given function.
    */
-  def apply[T](decoder: Seq[Either[JsValue, ByteString]] => T): SocketIOArgsDecoder[T] = new SocketIOArgsDecoder[T] {
-    override def decodeArgs(args: Seq[Either[JsValue, ByteString]]) = decoder(args)
-  }
+  def apply[T](decoder: Seq[Either[JsValue, ByteString]] => T): SocketIOArgsDecoder[T] =
+    new SocketIOArgsDecoder[T] {
+      override def decodeArgs(args: Seq[Either[JsValue, ByteString]]) = decoder(args)
+    }
 }
 
 /**
@@ -525,17 +542,19 @@ object SocketIOArgDecoder {
   /**
    * Create a decoder from the given decode function.
    */
-  def apply[T](decode: Either[JsValue, ByteString] => T): SocketIOArgDecoder[T] = new SocketIOArgDecoder[T] {
-    override def decodeArg(arg: Either[JsValue, ByteString]) = decode(arg)
-  }
+  def apply[T](decode: Either[JsValue, ByteString] => T): SocketIOArgDecoder[T] =
+    new SocketIOArgDecoder[T] {
+      override def decodeArg(arg: Either[JsValue, ByteString]) = decode(arg)
+    }
 
   /**
    * Create a JSON decoder.
    */
-  def json[T: Reads]: SocketIOArgDecoder[T] = apply {
-    case Left(jsValue) => jsValue.as[T]
-    case Right(bytes)  => Json.parse(bytes.toArray).as[T]
-  }
+  def json[T: Reads]: SocketIOArgDecoder[T] =
+    apply {
+      case Left(jsValue) => jsValue.as[T]
+      case Right(bytes)  => Json.parse(bytes.toArray).as[T]
+    }
 }
 
 /**
@@ -564,9 +583,10 @@ object SocketIOArgsEncoder {
   /**
    * Create an args encoder from the given function.
    */
-  def apply[T](encode: T => Seq[Either[JsValue, ByteString]]): SocketIOArgsEncoder[T] = new SocketIOArgsEncoder[T] {
-    override def encodeArgs(t: T) = encode(t)
-  }
+  def apply[T](encode: T => Seq[Either[JsValue, ByteString]]): SocketIOArgsEncoder[T] =
+    new SocketIOArgsEncoder[T] {
+      override def encodeArgs(t: T) = encode(t)
+    }
 }
 
 /**
@@ -595,14 +615,16 @@ object SocketIOArgEncoder {
   /**
    * Create an arg encoder from the given function.
    */
-  def apply[T](encoder: T => Either[JsValue, ByteString]): SocketIOArgEncoder[T] = new SocketIOArgEncoder[T] {
-    override def encodeArg(t: T) = encoder(t)
-  }
+  def apply[T](encoder: T => Either[JsValue, ByteString]): SocketIOArgEncoder[T] =
+    new SocketIOArgEncoder[T] {
+      override def encodeArg(t: T) = encoder(t)
+    }
 
   /**
    * Create a json arg encoder.
    */
-  def json[T: Writes]: SocketIOArgEncoder[T] = apply { t =>
-    Left(Json.toJson(t))
-  }
+  def json[T: Writes]: SocketIOArgEncoder[T] =
+    apply { t =>
+      Left(Json.toJson(t))
+    }
 }

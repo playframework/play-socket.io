@@ -328,98 +328,100 @@ private class SocketIOSessionStage[SessionData](
         }
       }
 
-      def handleSocketIOPacket(packet: SocketIOPacket): Unit = packet match {
+      def handleSocketIOPacket(packet: SocketIOPacket): Unit =
+        packet match {
 
-        case packet @ SocketIOConnectPacket(nsWithQuery) =>
-          val namespace = nsWithQuery.map(_.takeWhile(_ != '?'))
+          case packet @ SocketIOConnectPacket(nsWithQuery) =>
+            val namespace = nsWithQuery.map(_.takeWhile(_ != '?'))
 
-          if (activeNamespaces(namespace)) {
-            pushError(namespace, NamespaceAlreadyConnected(namespace))
-          } else {
-            try {
-              nsWithQuery match {
-                case None =>
-                  connectNamespace(namespace, defaultNamespaceCallback(session))
-                case Some(ns) =>
-                  connectNamespace(
-                    namespace,
-                    connectToNamespaceCallback.applyOrElse(
-                      (session, ns), { _: (SocketIOSession[SessionData], String) =>
-                        throw NamespaceNotFound(namespace)
-                      }
+            if (activeNamespaces(namespace)) {
+              pushError(namespace, NamespaceAlreadyConnected(namespace))
+            } else {
+              try {
+                nsWithQuery match {
+                  case None =>
+                    connectNamespace(namespace, defaultNamespaceCallback(session))
+                  case Some(ns) =>
+                    connectNamespace(
+                      namespace,
+                      connectToNamespaceCallback.applyOrElse(
+                        (session, ns),
+                        { _: (SocketIOSession[SessionData], String) =>
+                          throw NamespaceNotFound(namespace)
+                        }
+                      )
                     )
-                  )
+                }
+              } catch {
+                case NonFatal(e) =>
+                  pushError(namespace, e)
               }
-            } catch {
-              case NonFatal(e) =>
-                pushError(namespace, e)
             }
-          }
 
-        case SocketIODisconnectPacket(namespace) =>
-          validateNamespace(namespace) {
-            push(socketIOOut, DisconnectSocketIONamespace(namespace, None))
-            // The socket.io client forgets about a namespace as soon as it sends a disconnect,
-            // so there's no point in us waiting around to receive the disconnect message out of
-            // the namespace before we remove it
-            activeNamespaces -= namespace
-          }
-
-        case SocketIOEventPacket(namespace, data, maybeAckId) =>
-          validateNamespace(namespace) {
-            val eventName = (for {
-              firstArg <- data.headOption
-              asString <- firstArg.asOpt[String]
-            } yield asString).getOrElse("")
-
-            val ack = maybeAckId.map(ackId => new FlowCallbackAck(packetCallback.invoke, namespace, ackId))
-
-            push(
-              socketIOOut,
-              NamespacedSocketIOEvent(namespace, SocketIOEvent(eventName, data.drop(1).map(Left.apply), ack))
-            )
-          }
-
-        case SocketIOAckPacket(namespace, args, ackId) =>
-          validateNamespace(namespace) {
-            ackFunctions.get(ackId) match {
-              case Some((_, ackFunction)) =>
-                ackFunction(args.map(Left.apply))
-                ackFunctions -= ackId
-                pull(engineIOIn)
-              case None =>
-                pushError(namespace, UnknownAckId(ackId))
+          case SocketIODisconnectPacket(namespace) =>
+            validateNamespace(namespace) {
+              push(socketIOOut, DisconnectSocketIONamespace(namespace, None))
+              // The socket.io client forgets about a namespace as soon as it sends a disconnect,
+              // so there's no point in us waiting around to receive the disconnect message out of
+              // the namespace before we remove it
+              activeNamespaces -= namespace
             }
-          }
 
-        case SocketIOErrorPacket(namespace, error) =>
-          push(socketIOOut, DisconnectSocketIONamespace(namespace, Some(ErrorFromClient(error))))
+          case SocketIOEventPacket(namespace, data, maybeAckId) =>
+            validateNamespace(namespace) {
+              val eventName = (for {
+                firstArg <- data.headOption
+                asString <- firstArg.asOpt[String]
+              } yield asString).getOrElse("")
 
-        case SocketIOBinaryEventPacket(namespace, data, maybeAckId) =>
-          validateNamespace(namespace) {
-            val eventName = (for {
-              firstArg <- data.headOption
-              asJson   <- firstArg.left.toOption
-              asString <- asJson.asOpt[String]
-            } yield asString).getOrElse("")
+              val ack = maybeAckId.map(ackId => new FlowCallbackAck(packetCallback.invoke, namespace, ackId))
 
-            val ack = maybeAckId.map(ackId => new FlowCallbackAck(packetCallback.invoke, namespace, ackId))
-
-            push(socketIOOut, NamespacedSocketIOEvent(namespace, SocketIOEvent(eventName, data.drop(1), ack)))
-          }
-
-        case SocketIOBinaryAckPacket(namespace, args, ackId) =>
-          validateNamespace(namespace) {
-            ackFunctions.get(ackId) match {
-              case Some((_, ackFunction)) =>
-                ackFunction(args)
-                ackFunctions -= ackId
-                pull(engineIOIn)
-              case None =>
-                pushError(namespace, UnknownAckId(ackId))
+              push(
+                socketIOOut,
+                NamespacedSocketIOEvent(namespace, SocketIOEvent(eventName, data.drop(1).map(Left.apply), ack))
+              )
             }
-          }
-      }
+
+          case SocketIOAckPacket(namespace, args, ackId) =>
+            validateNamespace(namespace) {
+              ackFunctions.get(ackId) match {
+                case Some((_, ackFunction)) =>
+                  ackFunction(args.map(Left.apply))
+                  ackFunctions -= ackId
+                  pull(engineIOIn)
+                case None =>
+                  pushError(namespace, UnknownAckId(ackId))
+              }
+            }
+
+          case SocketIOErrorPacket(namespace, error) =>
+            push(socketIOOut, DisconnectSocketIONamespace(namespace, Some(ErrorFromClient(error))))
+
+          case SocketIOBinaryEventPacket(namespace, data, maybeAckId) =>
+            validateNamespace(namespace) {
+              val eventName = (for {
+                firstArg <- data.headOption
+                asJson   <- firstArg.left.toOption
+                asString <- asJson.asOpt[String]
+              } yield asString).getOrElse("")
+
+              val ack = maybeAckId.map(ackId => new FlowCallbackAck(packetCallback.invoke, namespace, ackId))
+
+              push(socketIOOut, NamespacedSocketIOEvent(namespace, SocketIOEvent(eventName, data.drop(1), ack)))
+            }
+
+          case SocketIOBinaryAckPacket(namespace, args, ackId) =>
+            validateNamespace(namespace) {
+              ackFunctions.get(ackId) match {
+                case Some((_, ackFunction)) =>
+                  ackFunction(args)
+                  ackFunctions -= ackId
+                  pull(engineIOIn)
+                case None =>
+                  pushError(namespace, UnknownAckId(ackId))
+              }
+            }
+        }
 
       def validateNamespace(namespace: Option[String])(block: => Unit) = {
         if (!activeNamespaces(namespace)) {
@@ -524,9 +526,15 @@ private class FlowCallbackAck(callback: SocketIOPacket => Unit, namespace: Optio
     extends SocketIOEventAck {
   override def apply(args: Seq[Either[JsValue, ByteString]]): Unit = {
     if (args.forall(_.isLeft)) {
-      callback(SocketIOAckPacket(namespace, args.collect {
-        case Left(jsValue) => jsValue
-      }, id))
+      callback(
+        SocketIOAckPacket(
+          namespace,
+          args.collect {
+            case Left(jsValue) => jsValue
+          },
+          id
+        )
+      )
     } else {
       callback(SocketIOBinaryAckPacket(namespace, args, id))
     }

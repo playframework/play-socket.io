@@ -65,9 +65,10 @@ object EngineIOManagerActor {
    */
   case class Close(sid: String, transport: EngineIOTransport, requestId: String) extends SessionMessage
 
-  def props(config: EngineIOConfig, sessionProps: Props) = Props {
-    new EngineIOManagerActor(config, sessionProps)
-  }
+  def props(config: EngineIOConfig, sessionProps: Props) =
+    Props {
+      new EngineIOManagerActor(config, sessionProps)
+    }
 }
 
 /**

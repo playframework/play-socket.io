@@ -57,7 +57,7 @@ object EngineIOConfig {
 }
 
 @Singleton
-class EngineIOConfigProvider @Inject()(configuration: Configuration) extends Provider[EngineIOConfig] {
+class EngineIOConfigProvider @Inject() (configuration: Configuration) extends Provider[EngineIOConfig] {
   override lazy val get: EngineIOConfig = EngineIOConfig.fromConfiguration(configuration)
 }
 
@@ -101,66 +101,68 @@ final class EngineIOController(
     }
   }
 
-  private def pollingEndpoint = Action.async(EngineIOPayload.parser(parse)) { implicit request =>
-    val maybeSid  = request.getQueryString("sid")
-    val requestId = request.getQueryString("t").getOrElse(request.id.toString)
-    val transport = EngineIOTransport.Polling
+  private def pollingEndpoint =
+    Action.async(EngineIOPayload.parser(parse)) { implicit request =>
+      val maybeSid  = request.getQueryString("sid")
+      val requestId = request.getQueryString("t").getOrElse(request.id.toString)
+      val transport = EngineIOTransport.Polling
 
-    (maybeSid, request.body) match {
-      // sid and payload, we're posting packets
-      case (Some(sid), Some(payload)) =>
-        log.debug(s"Received push request for $sid")
+      (maybeSid, request.body) match {
+        // sid and payload, we're posting packets
+        case (Some(sid), Some(payload)) =>
+          log.debug(s"Received push request for $sid")
 
-        (engineIOManager ? Packets(sid, transport, payload.packets, requestId)).map { _ =>
-          Ok("ok")
-        }
-
-      // sid no payload, we're retrieving packets
-      case (Some(sid), None) =>
-        log.debug(s"Received poll request for $sid")
-
-        (engineIOManager ? Retrieve(sid, transport, requestId)).map {
-          case Close(_, _, _)            => Ok(EngineIOPacket(EngineIOPacketType.Close))
-          case Packets(_, _, Nil, _)     => Ok(EngineIOPacket(EngineIOPacketType.Noop))
-          case Packets(_, _, packets, _) => Ok(EngineIOPayload(packets))
-        }
-
-      // No sid, we're creating a new session
-      case (None, _) =>
-        val sid = UUID.randomUUID().toString
-
-        log.debug(s"Received new connection for $sid")
-
-        (engineIOManager ? Connect(sid, transport, request, requestId)).mapTo[Packets].map { packets =>
-          Ok(EngineIOPayload(packets.packets))
-        }
-
-    }
-  }
-
-  private def webSocketEndpoint = WebSocket.acceptOrResult { request =>
-    val maybeSid  = request.getQueryString("sid")
-    val requestId = request.getQueryString("t").getOrElse(request.id.toString)
-    val transport = EngineIOTransport.WebSocket
-
-    maybeSid match {
-
-      case None =>
-        // No sid, first we have to create a session, then we can start the flow, sending the open packet
-        // as the first message.
-        val sid = UUID.randomUUID().toString
-        (engineIOManager ? Connect(sid, transport, request, requestId)).mapTo[Packets].map { packets =>
-          if (packets.packets.headOption.exists(_.typeId == EngineIOPacketType.Open)) {
-            Right(webSocketFlow(sid, requestId).prepend(Source.fromIterator(() => packets.packets.iterator)))
-          } else {
-            Right(Flow.fromSinkAndSource(Sink.ignore, Source.fromIterator(() => packets.packets.iterator)))
+          (engineIOManager ? Packets(sid, transport, payload.packets, requestId)).map { _ =>
+            Ok("ok")
           }
-        }
 
-      case Some(sid) =>
-        Future.successful(Right(webSocketFlow(sid, requestId)))
+        // sid no payload, we're retrieving packets
+        case (Some(sid), None) =>
+          log.debug(s"Received poll request for $sid")
+
+          (engineIOManager ? Retrieve(sid, transport, requestId)).map {
+            case Close(_, _, _)            => Ok(EngineIOPacket(EngineIOPacketType.Close))
+            case Packets(_, _, Nil, _)     => Ok(EngineIOPacket(EngineIOPacketType.Noop))
+            case Packets(_, _, packets, _) => Ok(EngineIOPayload(packets))
+          }
+
+        // No sid, we're creating a new session
+        case (None, _) =>
+          val sid = UUID.randomUUID().toString
+
+          log.debug(s"Received new connection for $sid")
+
+          (engineIOManager ? Connect(sid, transport, request, requestId)).mapTo[Packets].map { packets =>
+            Ok(EngineIOPayload(packets.packets))
+          }
+
+      }
     }
-  }
+
+  private def webSocketEndpoint =
+    WebSocket.acceptOrResult { request =>
+      val maybeSid  = request.getQueryString("sid")
+      val requestId = request.getQueryString("t").getOrElse(request.id.toString)
+      val transport = EngineIOTransport.WebSocket
+
+      maybeSid match {
+
+        case None =>
+          // No sid, first we have to create a session, then we can start the flow, sending the open packet
+          // as the first message.
+          val sid = UUID.randomUUID().toString
+          (engineIOManager ? Connect(sid, transport, request, requestId)).mapTo[Packets].map { packets =>
+            if (packets.packets.headOption.exists(_.typeId == EngineIOPacketType.Open)) {
+              Right(webSocketFlow(sid, requestId).prepend(Source.fromIterator(() => packets.packets.iterator)))
+            } else {
+              Right(Flow.fromSinkAndSource(Sink.ignore, Source.fromIterator(() => packets.packets.iterator)))
+            }
+          }
+
+        case Some(sid) =>
+          Future.successful(Right(webSocketFlow(sid, requestId)))
+      }
+    }
 
   private def webSocketFlow(sid: String, requestId: String): Flow[EngineIOPacket, EngineIOPacket, _] = {
     val transport = EngineIOTransport.WebSocket
@@ -192,7 +194,7 @@ final class EngineIOController(
       }
       .takeWhile(!_.isInstanceOf[Close])
       .mapConcat {
-        case Packets(_, _, packets: Seq[EngineIOPacket], _) => collection.immutable.Seq[EngineIOPacket](packets:_*)
+        case Packets(_, _, packets: Seq[EngineIOPacket], _) => collection.immutable.Seq[EngineIOPacket](packets: _*)
       }
 
     Flow.fromSinkAndSourceCoupled(in, out)
@@ -204,7 +206,7 @@ final class EngineIOController(
  * The engine.io system. Allows you to create engine.io controllers for handling engine.io connections.
  */
 @Singleton
-final class EngineIO @Inject()(
+final class EngineIO @Inject() (
     config: EngineIOConfig,
     httpErrorHandler: HttpErrorHandler,
     controllerComponents: ControllerComponents,
@@ -276,8 +278,9 @@ trait EngineIOComponents {
  * Provides engine.io components to Play's runtime dependency injection implementation.
  */
 class EngineIOModule extends Module {
-  override def bindings(environment: Environment, configuration: Configuration) = Seq(
-    bind[EngineIOConfig].toProvider[EngineIOConfigProvider],
-    bind[EngineIO].toSelf
-  )
+  override def bindings(environment: Environment, configuration: Configuration) =
+    Seq(
+      bind[EngineIOConfig].toProvider[EngineIOConfigProvider],
+      bind[EngineIO].toSelf
+    )
 }

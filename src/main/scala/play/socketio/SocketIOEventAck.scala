@@ -14,9 +14,10 @@ trait SocketIOEventAck {
 
   def apply(args: Seq[Either[JsValue, ByteString]]): Unit
 
-  def compose[T](f: T => Seq[Either[JsValue, ByteString]]): T => Unit = (args: T) => {
-    SocketIOEventAck.this.apply(f(args))
-  }
+  def compose[T](f: T => Seq[Either[JsValue, ByteString]]): T => Unit =
+    (args: T) => {
+      SocketIOEventAck.this.apply(f(args))
+    }
 }
 
 object SocketIOEventAck {

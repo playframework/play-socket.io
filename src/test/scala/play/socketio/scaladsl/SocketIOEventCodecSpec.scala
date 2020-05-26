@@ -77,7 +77,10 @@ class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
     }
 
     "allow decoding three argument events" in {
-      decodeStringArgs(decodeJson[String] ~ decodeJson[String] ~ decodeJson[String], Seq("one", "two", "three")) should ===(
+      decodeStringArgs(
+        decodeJson[String] ~ decodeJson[String] ~ decodeJson[String],
+        Seq("one", "two", "three")
+      ) should ===(
         ("one", "two", "three")
       )
     }

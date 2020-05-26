@@ -55,10 +55,11 @@ object EngineIOSessionActor {
   def props[SessionData](
       config: EngineIOConfig,
       handler: EngineIOSessionHandler
-  )(implicit mat: Materializer) = Props {
+  )(implicit mat: Materializer) =
+    Props {
 
-    new EngineIOSessionActor[SessionData](config, handler)
-  }
+      new EngineIOSessionActor[SessionData](config, handler)
+    }
 }
 
 /**
@@ -229,10 +230,11 @@ class EngineIOSessionActor[SessionData](
 
   private def doConnect(flow: Flow[EngineIOMessage, Seq[EngineIOMessage], NotUsed]): Unit = {
 
-    def messagesToPackets(messages: Seq[EngineIOMessage]) = messages.map {
-      case TextEngineIOMessage(text)    => Utf8EngineIOPacket(EngineIOPacketType.Message, text)
-      case BinaryEngineIOMessage(bytes) => BinaryEngineIOPacket(EngineIOPacketType.Message, bytes)
-    }
+    def messagesToPackets(messages: Seq[EngineIOMessage]) =
+      messages.map {
+        case TextEngineIOMessage(text)    => Utf8EngineIOPacket(EngineIOPacketType.Message, text)
+        case BinaryEngineIOMessage(bytes) => BinaryEngineIOPacket(EngineIOPacketType.Message, bytes)
+      }
 
     // Set up flow
     val (sourceQ, sinkQ) = Source

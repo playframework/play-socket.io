@@ -31,11 +31,12 @@ object EngineIOTransport {
   case object Polling   extends EngineIOTransport("polling")
   case object WebSocket extends EngineIOTransport("websocket")
 
-  def fromName(name: String) = name match {
-    case "polling"   => Polling
-    case "websocket" => WebSocket
-    case _           => throw new RuntimeException("Unknown transport")
-  }
+  def fromName(name: String) =
+    name match {
+      case "polling"   => Polling
+      case "websocket" => WebSocket
+      case _           => throw new RuntimeException("Unknown transport")
+    }
 }
 
 /**
@@ -83,16 +84,17 @@ object EngineIOPacketType {
 
   def fromChar(char: Char) = fromBinary((char - '0').toByte)
 
-  def fromBinary(byte: Byte) = byte match {
-    case 0     => Open
-    case 1     => Close
-    case 2     => Ping
-    case 3     => Pong
-    case 4     => Message
-    case 5     => Upgrade
-    case 6     => Noop
-    case other => throw EngineIOEncodingException(s"Unknown packet type id: $other")
-  }
+  def fromBinary(byte: Byte) =
+    byte match {
+      case 0     => Open
+      case 1     => Close
+      case 2     => Ping
+      case 3     => Pong
+      case 4     => Message
+      case 5     => Upgrade
+      case 6     => Noop
+      case other => throw EngineIOEncodingException(s"Unknown packet type id: $other")
+    }
 }
 
 /**
@@ -304,7 +306,9 @@ object BinaryEngineIOPayloadEncoding {
         BinaryPacketBytes ++ encodeInt(data.size + 1) ++ LengthTerminatorBytes ++ typeId.binaryEncoded ++ data
       case Utf8EngineIOPacket(typeId, text) =>
         val data = ByteString(text)
-        StringPacketBytes ++ encodeInt(data.size + 1) ++ LengthTerminatorBytes ++ ByteString(typeId.asciiEncoded) ++ data
+        StringPacketBytes ++ encodeInt(data.size + 1) ++ LengthTerminatorBytes ++ ByteString(
+          typeId.asciiEncoded
+        ) ++ data
     }
   }
 

@@ -29,16 +29,17 @@ object SocketIOPacketType {
   case object BinaryEvent extends SocketIOPacketType(5)
   case object BinaryAck   extends SocketIOPacketType(6)
 
-  def fromChar(char: Char) = char match {
-    case '0' => Connect
-    case '1' => Disconnect
-    case '2' => Event
-    case '3' => Ack
-    case '4' => Error
-    case '5' => BinaryEvent
-    case '6' => BinaryAck
-    case _   => throw SocketIOEncodingException("", "Unknown socket.io packet type: " + char)
-  }
+  def fromChar(char: Char) =
+    char match {
+      case '0' => Connect
+      case '1' => Disconnect
+      case '2' => Event
+      case '3' => Ack
+      case '4' => Error
+      case '5' => BinaryEvent
+      case '6' => BinaryAck
+      case _   => throw SocketIOEncodingException("", "Unknown socket.io packet type: " + char)
+    }
 }
 
 /**
@@ -183,16 +184,17 @@ object SocketIOPacket {
         if (placeholdersSeparator == -1) {
           throw SocketIOEncodingException(text, s"Malformed binary socket.io packet, missing placeholder separator")
         }
-        val placeholders = try {
-          text.substring(1, placeholdersSeparator).toInt
-        } catch {
-          case _: NumberFormatException =>
-            throw SocketIOEncodingException(
-              text,
-              "Malformed binary socket.io packet, num placeholders is not a number: '" +
-                text.substring(1, placeholdersSeparator) + "'"
-            )
-        }
+        val placeholders =
+          try {
+            text.substring(1, placeholdersSeparator).toInt
+          } catch {
+            case _: NumberFormatException =>
+              throw SocketIOEncodingException(
+                text,
+                "Malformed binary socket.io packet, num placeholders is not a number: '" +
+                  text.substring(1, placeholdersSeparator) + "'"
+              )
+          }
         (placeholders, placeholdersSeparator + 1)
       } else {
         (0, 1)
@@ -230,12 +232,13 @@ object SocketIOPacket {
       }
 
       val argsData = text.substring(argsStart)
-      val args = try {
-        Json.parse(argsData)
-      } catch {
-        case e: Exception =>
-          throw SocketIOEncodingException(text, "Error parsing socket.io args", e)
-      }
+      val args =
+        try {
+          Json.parse(argsData)
+        } catch {
+          case e: Exception =>
+            throw SocketIOEncodingException(text, "Error parsing socket.io args", e)
+        }
 
       (index, Some(args))
     } else {

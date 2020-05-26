@@ -25,17 +25,18 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
   private val UnknownSessionIdManifest          = "F"
   private val SessionClosedManifest             = "G"
 
-  override def manifest(obj: AnyRef) = obj match {
-    case _: Connect                   => ConnectManifest
-    case _: Packets                   => PacketsManifest
-    case _: Retrieve                  => RetrieveManifest
-    case _: Close                     => CloseManifest
-    case _: EngineIOEncodingException => EngineIOEncodingExceptionManifest
-    case _: UnknownSessionId          => UnknownSessionIdManifest
-    case SessionClosed                => SessionClosedManifest
-    case _ =>
-      throw new IllegalArgumentException(s"I don't know how to serialize object of type ${obj.getClass}")
-  }
+  override def manifest(obj: AnyRef) =
+    obj match {
+      case _: Connect                   => ConnectManifest
+      case _: Packets                   => PacketsManifest
+      case _: Retrieve                  => RetrieveManifest
+      case _: Close                     => CloseManifest
+      case _: EngineIOEncodingException => EngineIOEncodingExceptionManifest
+      case _: UnknownSessionId          => UnknownSessionIdManifest
+      case SessionClosed                => SessionClosedManifest
+      case _ =>
+        throw new IllegalArgumentException(s"I don't know how to serialize object of type ${obj.getClass}")
+    }
 
   override def toBinary(obj: AnyRef): Array[Byte] = {
     val protobufObject = obj match {
@@ -76,63 +77,66 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
     protobufObject.toByteArray
   }
 
-  override def fromBinary(bytes: Array[Byte], manifest: String) = manifest match {
-    case `ConnectManifest` =>
-      val connect = p.Connect.parseFrom(bytes)
-      Connect(
-        connect.sid,
-        decodeTransport(connect.transport),
-        new DeserializedRequestHeader(
-          connect.method,
-          connect.uri,
-          connect.version,
-          connect.headers.map(h => (h.name, h.value))
-        ),
-        connect.requestId
-      )
+  override def fromBinary(bytes: Array[Byte], manifest: String) =
+    manifest match {
+      case `ConnectManifest` =>
+        val connect = p.Connect.parseFrom(bytes)
+        Connect(
+          connect.sid,
+          decodeTransport(connect.transport),
+          new DeserializedRequestHeader(
+            connect.method,
+            connect.uri,
+            connect.version,
+            connect.headers.map(h => (h.name, h.value))
+          ),
+          connect.requestId
+        )
 
-    case `PacketsManifest` =>
-      val packets = p.Packets.parseFrom(bytes)
-      Packets(packets.sid, decodeTransport(packets.transport), packets.packets.map(decodePacket), packets.requestId)
+      case `PacketsManifest` =>
+        val packets = p.Packets.parseFrom(bytes)
+        Packets(packets.sid, decodeTransport(packets.transport), packets.packets.map(decodePacket), packets.requestId)
 
-    case `RetrieveManifest` =>
-      val retrieve = p.Retrieve.parseFrom(bytes)
-      Retrieve(retrieve.sid, decodeTransport(retrieve.transport), retrieve.requestId)
+      case `RetrieveManifest` =>
+        val retrieve = p.Retrieve.parseFrom(bytes)
+        Retrieve(retrieve.sid, decodeTransport(retrieve.transport), retrieve.requestId)
 
-    case `CloseManifest` =>
-      val close = p.Close.parseFrom(bytes)
-      Close(close.sid, decodeTransport(close.transport), close.requestId)
+      case `CloseManifest` =>
+        val close = p.Close.parseFrom(bytes)
+        Close(close.sid, decodeTransport(close.transport), close.requestId)
 
-    case `EngineIOEncodingExceptionManifest` =>
-      val exception = p.EngineIOEncodingException.parseFrom(bytes)
-      EngineIOEncodingException(exception.message)
+      case `EngineIOEncodingExceptionManifest` =>
+        val exception = p.EngineIOEncodingException.parseFrom(bytes)
+        EngineIOEncodingException(exception.message)
 
-    case `UnknownSessionIdManifest` =>
-      val exception = p.UnknownSessionId.parseFrom(bytes)
-      UnknownSessionId(exception.sid)
+      case `UnknownSessionIdManifest` =>
+        val exception = p.UnknownSessionId.parseFrom(bytes)
+        UnknownSessionId(exception.sid)
 
-    case `SessionClosedManifest` =>
-      SessionClosed
+      case `SessionClosedManifest` =>
+        SessionClosed
 
-    case _ =>
-      throw new IllegalArgumentException(s"I don't know how to deserialize object with manifest [$manifest]")
-  }
+      case _ =>
+        throw new IllegalArgumentException(s"I don't know how to deserialize object with manifest [$manifest]")
+    }
 
   private def encodeBytes(bytes: AByteString): PByteString = {
     // This does 2 buffer copies - not sure if there's a smarter zero buffer copy way to do it
     PByteString.copyFrom(bytes.toByteBuffer)
   }
 
-  private def encodeTransport(transport: EngineIOTransport): p.Transport = transport match {
-    case EngineIOTransport.Polling   => p.Transport.POLLING
-    case EngineIOTransport.WebSocket => p.Transport.WEBSOCKET
-  }
+  private def encodeTransport(transport: EngineIOTransport): p.Transport =
+    transport match {
+      case EngineIOTransport.Polling   => p.Transport.POLLING
+      case EngineIOTransport.WebSocket => p.Transport.WEBSOCKET
+    }
 
-  private def decodeTransport(transport: p.Transport): EngineIOTransport = transport match {
-    case p.Transport.POLLING             => EngineIOTransport.Polling
-    case p.Transport.WEBSOCKET           => EngineIOTransport.WebSocket
-    case p.Transport.Unrecognized(value) => throw new IllegalArgumentException("Unrecognized transport: " + value)
-  }
+  private def decodeTransport(transport: p.Transport): EngineIOTransport =
+    transport match {
+      case p.Transport.POLLING             => EngineIOTransport.Polling
+      case p.Transport.WEBSOCKET           => EngineIOTransport.WebSocket
+      case p.Transport.Unrecognized(value) => throw new IllegalArgumentException("Unrecognized transport: " + value)
+    }
 
   private def decodeBytes(bytes: PByteString): AByteString = {
     AByteString.apply(bytes.asReadOnlyByteBuffer())

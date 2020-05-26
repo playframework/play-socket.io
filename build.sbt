@@ -6,7 +6,7 @@ val AkkaVersion = "2.5.23"
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
 
 val macwire = "com.softwaremill.macwire" %% "macros" % "2.3.3"
-val lombok  = "org.projectlombok"        % "lombok"  % "1.18.8"
+val lombok  = "org.projectlombok"         % "lombok" % "1.18.8"
 val akkaCluster = Seq(
   "com.typesafe.akka" %% "akka-cluster"       % AkkaVersion,
   "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
@@ -34,12 +34,12 @@ lazy val root = (project in file("."))
       "com.typesafe.play" %% "play-logback"          % playVersion % Test,
       // Test dependencies for Scala/Java dependency injection
       "com.typesafe.play" %% "play-guice" % playVersion % Test,
-      macwire             % Test,
+      macwire              % Test,
       // Test dependencies for running chrome driver
       "org.seleniumhq.selenium" % "selenium-chrome-driver" % "3.141.59",
       // Test framework dependencies
-      "org.scalatest" %% "scalatest"      % "3.0.8" % Test,
-      "com.novocode"  % "junit-interface" % "0.11"  % Test
+      "org.scalatest" %% "scalatest"       % "3.0.8" % Test,
+      "com.novocode"   % "junit-interface" % "0.11"  % Test
     ),
     PB.targets in Compile := Seq(
       scalapb.gen() -> (sourceManaged in Compile).value

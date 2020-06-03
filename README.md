@@ -38,6 +38,4 @@ The test runner runs the tests against each of these backends, using phantomjs a
 
 ## Support
 
-The Play backed socket.io support library is *[Incubating][]*.
-
-[Incubating]: https://developer.lightbend.com/docs/lightbend-platform/introduction/getting-help/support-terminology.html#incubating
+The Play-backed socket.io support library is *[Community Driven](https://developer.lightbend.com/docs/introduction/getting-help/support-terminology.html)*.

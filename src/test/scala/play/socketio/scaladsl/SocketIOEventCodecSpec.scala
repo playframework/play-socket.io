@@ -4,15 +4,15 @@
 package play.socketio.scaladsl
 
 import akka.util.ByteString
-import org.scalatest.Matchers
 import org.scalatest.OptionValues
-import org.scalatest.WordSpec
 import play.api.libs.json.JsString
 import play.api.libs.json.JsValue
 import play.socketio.SocketIOEvent
 import play.socketio.SocketIOEventAck
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class SocketIOEventCodecSpec extends WordSpec with Matchers with OptionValues {
+class SocketIOEventCodecSpec extends AnyWordSpec with Matchers with OptionValues {
 
   import play.socketio.scaladsl.SocketIOEventCodec._
 

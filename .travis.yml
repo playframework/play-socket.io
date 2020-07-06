@@ -1,5 +1,6 @@
 language: scala
 
+dist: bionic # 18.04 LTS
 services:
   - xvfb
 

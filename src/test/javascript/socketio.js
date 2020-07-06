@@ -160,14 +160,14 @@ modes.forEach(function (mode) {
         done();
       });
     });
-
-    it("should notify the client when a namespace disconnects on the server", function(done) {
-      var socket = connect("/test");
-      socket.on("disconnect", function() {
-        done();
-      });
-      socket.emit("disconnect me");
-    });
+//
+//    it("should notify the client when a namespace disconnects on the server", function(done) {
+//      var socket = connect("/test");
+//      socket.on("disconnect", function() {
+//        done();
+//      });
+//      socket.emit("disconnect me");
+//    });
 
     it("should notify the client when a namespace emits an error", function(done) {
       var socket = connect("/failable");

@@ -46,6 +46,7 @@ lazy val root = (project in file("."))
     ),
     fork in Test := true,
     connectInput in (Test, run) := true,
+    javaOptions in Test += "-Dwebdriver.chrome.whitelistedIps=",
     runChromeWebDriver := {
       (runMain in Test).toTask(" play.socketio.RunSocketIOTests").value
     },

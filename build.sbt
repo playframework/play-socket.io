@@ -1,7 +1,7 @@
 import play.core.PlayVersion.{ current => playVersion }
 import interplay.ScalaVersions._
 
-val AkkaVersion = "2.5.23"
+val AkkaVersion = "2.6.0"
 
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
 
@@ -29,6 +29,7 @@ lazy val root = (project in file("."))
       // Production dependencies
       "com.typesafe.play" %% "play"        % playVersion,
       "com.typesafe.akka" %% "akka-remote" % AkkaVersion,
+      "com.typesafe.akka" %% "akka-slf4j" % AkkaVersion,
       // Test dependencies for running a Play server
       "com.typesafe.play" %% "play-akka-http-server" % playVersion % Test,
       "com.typesafe.play" %% "play-logback"          % playVersion % Test,

@@ -315,13 +315,13 @@ private class SocketIOSessionStage[SessionData](
           }
         }
 
-        override def onPull() = {
+        override def onPull(): Unit = {
           if (isAvailable(engineIOOut)) {
             pull(engineIOIn)
           }
         }
 
-        override def onDownstreamFinish() = {
+        override def onDownstreamFinish(cause: Throwable): Unit = {
           // Cancel the ins so we can't get any more events
           cancel(engineIOIn)
           cancel(socketIOIn)

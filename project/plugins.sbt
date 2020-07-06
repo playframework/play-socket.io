@@ -9,4 +9,4 @@ addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.7.3")
 
 // Protobuf
 addSbtPlugin("com.thesamet" % "sbt-protoc" % "0.99.27")
-libraryDependencies += "com.thesamet.scalapb" %% "compilerplugin-shaded" % "0.9.6"
+libraryDependencies += "com.thesamet.scalapb" %% "compilerplugin-shaded" % "0.9.8"

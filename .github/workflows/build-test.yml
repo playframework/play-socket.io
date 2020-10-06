@@ -38,8 +38,7 @@ jobs:
         {
           "sample": [ "scalaChat", "scalaMultiRoomChat", "scalaClusteredChat", "javaChat", "javaMultiRoomChat", "javaClusteredChat" ]
         }
-      cmd: |- # sbt $MATRIX_SAMPLE/test
-        echo "TODO: NEED FIX"
+      cmd: sbt $MATRIX_SAMPLE/test
 
   finish:
     name: Finish

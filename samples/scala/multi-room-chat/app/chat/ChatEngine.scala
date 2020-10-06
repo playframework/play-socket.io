@@ -74,7 +74,7 @@ class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
     val (sink, source) = chatRooms.getOrElseUpdate(
       room, {
         // Each chat room is a merge hub merging messages into a broadcast hub.
-        MergeHub.source[ChatEvent].toMat(BroadcastHub.sink[ChatEvent])(Keep.both).run
+        MergeHub.source[ChatEvent].toMat(BroadcastHub.sink[ChatEvent])(Keep.both).run()
       }
     )
 

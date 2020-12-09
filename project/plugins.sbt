@@ -5,7 +5,7 @@ addSbtPlugin("org.scoverage"     % "sbt-scoverage"   % "1.6.1")
 addSbtPlugin("de.heikoseeberger" % "sbt-header"      % "5.5.0")
 addSbtPlugin("org.scalameta"     % "sbt-scalafmt"    % "2.0.7")
 
-addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.7.3")
+addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.7.8")
 
 // Protobuf
 addSbtPlugin("com.thesamet" % "sbt-protoc" % "0.99.27")

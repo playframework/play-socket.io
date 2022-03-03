@@ -1,7 +1,7 @@
 import play.core.PlayVersion.{ current => playVersion }
 import interplay.ScalaVersions._
 
-val AkkaVersion = "2.5.32"
+val AkkaVersion = "2.5.23"
 
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
 

@@ -3,9 +3,10 @@
  */
 package play.socketio
 
+import io.github.bonigarcia.wdm.WebDriverManager
 import play.core.server.ServerConfig
-import java.util
 
+import java.util
 import org.openqa.selenium.chrome.ChromeDriver
 import org.openqa.selenium.chrome.ChromeDriverService
 import org.openqa.selenium.chrome.ChromeOptions
@@ -28,6 +29,8 @@ object RunSocketIOTests extends App {
   // Initialise logging before we start to do anything
   val environment = Environment.simple()
   LoggerConfigurator(environment.classLoader).foreach(_.configure(environment))
+
+  WebDriverManager.chromedriver().setup()
 
   val chromeOptions: ChromeOptions             = new ChromeOptions()
   val chromeDriverService: ChromeDriverService = ChromeDriverService.createDefaultService()

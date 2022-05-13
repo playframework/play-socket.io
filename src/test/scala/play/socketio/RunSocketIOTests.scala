@@ -32,7 +32,8 @@ object RunSocketIOTests extends App {
 
   WebDriverManager.chromedriver().setup()
 
-  val chromeOptions: ChromeOptions             = new ChromeOptions()
+  val chromeOptions: ChromeOptions = new ChromeOptions()
+    .addArguments("--headless", "--no-sandbox", "--disable-dev-shm-usage")
   val chromeDriverService: ChromeDriverService = ChromeDriverService.createDefaultService()
   val driver                                   = new ChromeDriver(chromeDriverService, chromeOptions)
 
@@ -40,15 +41,16 @@ object RunSocketIOTests extends App {
     def run(): Unit = driver.quit()
   }))
 
-  val passed = try {
+  val passed =
+    try {
 
-    runTests("Scala support", TestSocketIOScalaApplication) &&
-    runTests("Java support", new TestSocketIOJavaApplication) &&
-    runTests("Multi-node support", TestMultiNodeSocketIOApplication)
+      runTests("Scala support", TestSocketIOScalaApplication) &&
+      runTests("Java support", new TestSocketIOJavaApplication) &&
+      runTests("Multi-node support", TestMultiNodeSocketIOApplication)
 
-  } finally {
-    driver.quit()
-  }
+    } finally {
+      driver.quit()
+    }
 
   if (!passed) {
     System.exit(1)

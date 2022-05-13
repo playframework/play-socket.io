@@ -1,13 +1,12 @@
+import Dependencies.AkkaVersion
 import Dependencies.Scala212
 import Dependencies.Scala213
 import play.core.PlayVersion.{ current => playVersion }
 
-val AkkaVersion = "2.5.28"
-
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
 
 val macwire = "com.softwaremill.macwire" %% "macros" % "2.3.4"
-val lombok  = "org.projectlombok"        % "lombok"  % "1.18.8"
+val lombok  = "org.projectlombok"        % "lombok"  % "1.18.8" % Provided
 val akkaCluster = Seq(
   "com.typesafe.akka" %% "akka-cluster"       % AkkaVersion,
   "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
@@ -36,8 +35,8 @@ lazy val root = (project in file("."))
       "com.typesafe.play" %% "play-guice" % playVersion % Test,
       macwire             % Test,
       // Test dependencies for running chrome driver
-      "io.github.bonigarcia"    % "webdrivermanager"       % "5.1.1"    % Test,
-      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "3.141.59" % Test,
+      "io.github.bonigarcia"    % "webdrivermanager"       % "5.1.1" % Test,
+      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.1.4" % Test,
       // Test framework dependencies
       "org.scalatest" %% "scalatest"      % "3.1.2" % Test,
       "com.novocode"  % "junit-interface" % "0.11"  % Test
@@ -91,7 +90,6 @@ lazy val scalaClusteredChat = (project in file("samples/scala/clustered-chat"))
   .settings(
     name := "play-socket.io-scala-clustered-chat-example",
     organization := "com.typesafe.play",
-    publish / skip := true,
     scalaVersion := Scala213,
     libraryDependencies ++= Seq(macwire % Provided) ++ akkaCluster
   )
@@ -102,7 +100,6 @@ lazy val javaChat = (project in file("samples/java/chat"))
   .settings(
     name := "play-socket.io-java-chat-example",
     organization := "com.typesafe.play",
-    publish / skip := true,
     scalaVersion := Scala213,
     libraryDependencies += guice
   )
@@ -113,7 +110,6 @@ lazy val javaMultiRoomChat = (project in file("samples/java/multi-room-chat"))
   .settings(
     name := "play-socket.io-java-multi-room-chat-example",
     organization := "com.typesafe.play",
-    publish / skip := true,
     scalaVersion := Scala213,
     libraryDependencies ++= Seq(guice, lombok)
   )
@@ -124,16 +120,19 @@ lazy val javaClusteredChat = (project in file("samples/java/clustered-chat"))
   .settings(
     name := "play-socket.io-java-clustered-chat-example",
     organization := "com.typesafe.play",
-    publish / skip := true,
     scalaVersion := Scala213,
     libraryDependencies ++= Seq(guice, lombok) ++ akkaCluster
   )
 
 addCommandAlias(
   "validateCode",
-  List(
-    "headerCheckAll",
-    "scalafmtSbtCheck",
-    "scalafmtCheckAll",
+  (
+    List(
+      "headerCheckAll",
+      "scalafmtSbtCheck",
+      "scalafmtCheckAll",
+    ) ++
+      List(scalaChat, scalaMultiRoomChat, scalaClusteredChat, javaChat, javaMultiRoomChat, javaClusteredChat)
+        .flatMap(p => List("scalafmtCheckAll").map(cmd => s"${p.id}/$cmd"))
   ).mkString(";")
 )

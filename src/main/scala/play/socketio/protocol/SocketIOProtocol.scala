@@ -128,9 +128,7 @@ object SocketIOPacket {
     }
 
     // Encode namespace
-    packet.namespace.foreach { ns =>
-      message ++= ns
-    }
+    packet.namespace.foreach { ns => message ++= ns }
 
     def encodeData(data: JsValue, id: Option[Long]): Unit = {
       if (packet.namespace.isDefined) {
@@ -183,16 +181,17 @@ object SocketIOPacket {
         if (placeholdersSeparator == -1) {
           throw SocketIOEncodingException(text, s"Malformed binary socket.io packet, missing placeholder separator")
         }
-        val placeholders = try {
-          text.substring(1, placeholdersSeparator).toInt
-        } catch {
-          case _: NumberFormatException =>
-            throw SocketIOEncodingException(
-              text,
-              "Malformed binary socket.io packet, num placeholders is not a number: '" +
-                text.substring(1, placeholdersSeparator) + "'"
-            )
-        }
+        val placeholders =
+          try {
+            text.substring(1, placeholdersSeparator).toInt
+          } catch {
+            case _: NumberFormatException =>
+              throw SocketIOEncodingException(
+                text,
+                "Malformed binary socket.io packet, num placeholders is not a number: '" +
+                  text.substring(1, placeholdersSeparator) + "'"
+              )
+          }
         (placeholders, placeholdersSeparator + 1)
       } else {
         (0, 1)
@@ -230,12 +229,13 @@ object SocketIOPacket {
       }
 
       val argsData = text.substring(argsStart)
-      val args = try {
-        Json.parse(argsData)
-      } catch {
-        case e: Exception =>
-          throw SocketIOEncodingException(text, "Error parsing socket.io args", e)
-      }
+      val args =
+        try {
+          Json.parse(argsData)
+        } catch {
+          case e: Exception =>
+            throw SocketIOEncodingException(text, "Error parsing socket.io args", e)
+        }
 
       (index, Some(args))
     } else {

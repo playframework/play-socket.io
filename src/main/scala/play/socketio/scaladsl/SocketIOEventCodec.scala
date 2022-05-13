@@ -65,9 +65,7 @@ object SocketIOEventCodec {
       override def applyOrElse[A1 <: SocketIOEvent, B1 >: T](event: A1, default: (A1) => B1) = {
         decoders
           .andThen(decoder => decoder.apply(event))
-          .applyOrElse(event.name, { _: String =>
-            default(event)
-          })
+          .applyOrElse(event.name, { _: String => default(event) })
       }
     }
 
@@ -192,9 +190,7 @@ object SocketIOEventCodec {
     def withMaybeAckEncoder[A](
         encoder: SocketIOArgsEncoder[A]
     ): SocketIOEventCodec.SocketIOEventDecoder[(T, Option[A => Unit])] = { event =>
-      (first(event), event.ack.map { ack =>
-        ack.compose(encoder.encodeArgs)
-      })
+      (first(event), event.ack.map { ack => ack.compose(encoder.encodeArgs) })
     }
   }
 
@@ -258,9 +254,7 @@ object SocketIOEventCodec {
         encoder: SocketIOArgsEncoder[A]
     ): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, Option[A => Unit])] = { event =>
       val args = init(event)
-      (args._1, args._2, event.ack.map { ack =>
-        ack.compose(encoder.encodeArgs)
-      })
+      (args._1, args._2, event.ack.map { ack => ack.compose(encoder.encodeArgs) })
     }
   }
 
@@ -324,9 +318,7 @@ object SocketIOEventCodec {
         encoder: SocketIOArgsEncoder[A]
     ): SocketIOEventCodec.SocketIOEventDecoder[(T1, T2, T3, Option[A => Unit])] = { event =>
       val args = init(event)
-      (args._1, args._2, args._3, event.ack.map { ack =>
-        ack.compose(encoder.encodeArgs)
-      })
+      (args._1, args._2, args._3, event.ack.map { ack => ack.compose(encoder.encodeArgs) })
     }
   }
 
@@ -602,7 +594,5 @@ object SocketIOArgEncoder {
   /**
    * Create a json arg encoder.
    */
-  def json[T: Writes]: SocketIOArgEncoder[T] = apply { t =>
-    Left(Json.toJson(t))
-  }
+  def json[T: Writes]: SocketIOArgEncoder[T] = apply { t => Left(Json.toJson(t)) }
 }

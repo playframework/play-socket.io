@@ -1,5 +1,6 @@
+import Dependencies.Scala212
+import Dependencies.Scala213
 import play.core.PlayVersion.{ current => playVersion }
-import interplay.ScalaVersions._
 
 val AkkaVersion = "2.5.28"
 
@@ -12,16 +13,15 @@ val akkaCluster = Seq(
   "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
 )
 
-(ThisBuild / playBuildRepoName) := "play-socket.io"
-(ThisBuild / sonatypeProfileName) := "com.lightbend"
+// Customise sbt-dynver's behaviour to make it work with tags which aren't v-prefixed
+(ThisBuild / dynverVTagPrefix) := false
 
 lazy val root = (project in file("."))
-  .enablePlugins(PlayReleaseBase, PlayLibrary)
   .settings(
-    organization := "com.lightbend.play",
+    organization := "com.typesafe.play",
     name := "play-socket-io",
-    scalaVersion := scala213,
-    crossScalaVersions := Seq(scala213, scala212),
+    scalaVersion := Scala213,
+    crossScalaVersions := Seq(Scala213, Scala212),
     scalacOptions ++= Seq("-feature", "-target:jvm-1.8"),
     (Compile / doc / scalacOptions) := Nil,
     javacOptions ++= Seq("-Xlint"),
@@ -36,7 +36,8 @@ lazy val root = (project in file("."))
       "com.typesafe.play" %% "play-guice" % playVersion % Test,
       macwire             % Test,
       // Test dependencies for running chrome driver
-      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "3.141.59",
+      "io.github.bonigarcia"    % "webdrivermanager"       % "5.1.1"    % Test,
+      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "3.141.59" % Test,
       // Test framework dependencies
       "org.scalatest" %% "scalatest"      % "3.1.2" % Test,
       "com.novocode"  % "junit-interface" % "0.11"  % Test
@@ -69,8 +70,8 @@ lazy val scalaChat = (project in file("samples/scala/chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-scala-chat-example",
-    organization := "com.lightbend.play",
-    scalaVersion := scala213,
+    organization := "com.typesafe.play",
+    scalaVersion := Scala213,
     libraryDependencies += macwire % Provided
   )
 
@@ -79,8 +80,8 @@ lazy val scalaMultiRoomChat = (project in file("samples/scala/multi-room-chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-scala-multi-room-chat-example",
-    organization := "com.lightbend.play",
-    scalaVersion := scala213,
+    organization := "com.typesafe.play",
+    scalaVersion := Scala213,
     libraryDependencies += macwire % Provided
   )
 
@@ -89,8 +90,9 @@ lazy val scalaClusteredChat = (project in file("samples/scala/clustered-chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-scala-clustered-chat-example",
-    organization := "com.lightbend.play",
-    scalaVersion := scala213,
+    organization := "com.typesafe.play",
+    publish / skip := true,
+    scalaVersion := Scala213,
     libraryDependencies ++= Seq(macwire % Provided) ++ akkaCluster
   )
 
@@ -99,8 +101,9 @@ lazy val javaChat = (project in file("samples/java/chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-java-chat-example",
-    organization := "com.lightbend.play",
-    scalaVersion := scala213,
+    organization := "com.typesafe.play",
+    publish / skip := true,
+    scalaVersion := Scala213,
     libraryDependencies += guice
   )
 
@@ -109,8 +112,9 @@ lazy val javaMultiRoomChat = (project in file("samples/java/multi-room-chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-java-multi-room-chat-example",
-    organization := "com.lightbend.play",
-    scalaVersion := scala213,
+    organization := "com.typesafe.play",
+    publish / skip := true,
+    scalaVersion := Scala213,
     libraryDependencies ++= Seq(guice, lombok)
   )
 
@@ -119,7 +123,17 @@ lazy val javaClusteredChat = (project in file("samples/java/clustered-chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-java-clustered-chat-example",
-    organization := "com.lightbend.play",
-    scalaVersion := scala213,
+    organization := "com.typesafe.play",
+    publish / skip := true,
+    scalaVersion := Scala213,
     libraryDependencies ++= Seq(guice, lombok) ++ akkaCluster
   )
+
+addCommandAlias(
+  "validateCode",
+  List(
+    "headerCheckAll",
+    "scalafmtSbtCheck",
+    "scalafmtCheckAll",
+  ).mkString(";")
+)

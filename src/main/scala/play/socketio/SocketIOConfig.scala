@@ -31,6 +31,6 @@ object SocketIOConfig {
 }
 
 @Singleton
-class SocketIOConfigProvider @Inject()(configuration: Configuration) extends Provider[SocketIOConfig] {
+class SocketIOConfigProvider @Inject() (configuration: Configuration) extends Provider[SocketIOConfig] {
   override lazy val get: SocketIOConfig = SocketIOConfig.fromConfiguration(configuration)
 }

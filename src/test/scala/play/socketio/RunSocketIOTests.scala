@@ -3,9 +3,10 @@
  */
 package play.socketio
 
+import io.github.bonigarcia.wdm.WebDriverManager
 import play.core.server.ServerConfig
-import java.util
 
+import java.util
 import org.openqa.selenium.chrome.ChromeDriver
 import org.openqa.selenium.chrome.ChromeDriverService
 import org.openqa.selenium.chrome.ChromeOptions
@@ -29,7 +30,10 @@ object RunSocketIOTests extends App {
   val environment = Environment.simple()
   LoggerConfigurator(environment.classLoader).foreach(_.configure(environment))
 
-  val chromeOptions: ChromeOptions             = new ChromeOptions()
+  WebDriverManager.chromedriver().setup()
+
+  val chromeOptions: ChromeOptions = new ChromeOptions()
+    .addArguments("--headless", "--no-sandbox", "--disable-dev-shm-usage")
   val chromeDriverService: ChromeDriverService = ChromeDriverService.createDefaultService()
   val driver                                   = new ChromeDriver(chromeDriverService, chromeOptions)
 
@@ -37,15 +41,16 @@ object RunSocketIOTests extends App {
     def run(): Unit = driver.quit()
   }))
 
-  val passed = try {
+  val passed =
+    try {
 
-    runTests("Scala support", TestSocketIOScalaApplication) &&
-    runTests("Java support", new TestSocketIOJavaApplication) &&
-    runTests("Multi-node support", TestMultiNodeSocketIOApplication)
+      runTests("Scala support", TestSocketIOScalaApplication) &&
+      runTests("Java support", new TestSocketIOJavaApplication) &&
+      runTests("Multi-node support", TestMultiNodeSocketIOApplication)
 
-  } finally {
-    driver.quit()
-  }
+    } finally {
+      driver.quit()
+    }
 
   if (!passed) {
     System.exit(1)

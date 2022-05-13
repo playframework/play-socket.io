@@ -1,28 +1,29 @@
 package modules
 
 import chat.ChatEngine
-import play.api.{ApplicationLoader, BuiltInComponents, BuiltInComponentsFromContext, LoggerConfigurator}
+import play.api.ApplicationLoader
+import play.api.BuiltInComponents
+import play.api.BuiltInComponentsFromContext
+import play.api.LoggerConfigurator
 import com.softwaremill.macwire._
 import controllers.AssetsComponents
 import play.api.inject.DefaultApplicationLifecycle
-import play.engineio.{EngineIOComponents, EngineIOController}
+import play.engineio.EngineIOComponents
+import play.engineio.EngineIOController
 import play.socketio.scaladsl.SocketIOComponents
 
 class MyApplicationLoader extends ApplicationLoader {
   override def load(context: ApplicationLoader.Context) =
     new BuiltInComponentsFromContext(context) with MyApplication {
-      LoggerConfigurator.apply(context.environment.classLoader)
+      LoggerConfigurator
+        .apply(context.environment.classLoader)
         .foreach(_.configure(context.environment))
     }.application
 }
 
-trait MyApplication extends BuiltInComponents
-  with AssetsComponents
-  with SocketIOComponents {
+trait MyApplication extends BuiltInComponents with AssetsComponents with SocketIOComponents {
 
-  override def applicationLifecycle: DefaultApplicationLifecycle
-
-  lazy val chatEngine = wire[ChatEngine]
+  lazy val chatEngine                             = wire[ChatEngine]
   lazy val engineIOController: EngineIOController = chatEngine.controller
 
   override lazy val router = {

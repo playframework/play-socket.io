@@ -1,29 +1,28 @@
+import Dependencies.AkkaVersion
+import Dependencies.Scala212
+import Dependencies.Scala213
 import play.core.PlayVersion.{ current => playVersion }
-import interplay.ScalaVersions._
-
-val AkkaVersion = "2.5.23"
 
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
 
 val macwire = "com.softwaremill.macwire" %% "macros" % "2.3.4"
-val lombok  = "org.projectlombok"        % "lombok"  % "1.18.8"
+val lombok  = "org.projectlombok"        % "lombok"  % "1.18.8" % Provided
 val akkaCluster = Seq(
   "com.typesafe.akka" %% "akka-cluster"       % AkkaVersion,
   "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
 )
 
-playBuildRepoName in ThisBuild := "play-socket.io"
-sonatypeProfileName in ThisBuild := "com.lightbend"
+// Customise sbt-dynver's behaviour to make it work with tags which aren't v-prefixed
+(ThisBuild / dynverVTagPrefix) := false
 
 lazy val root = (project in file("."))
-  .enablePlugins(PlayReleaseBase, PlayLibrary)
   .settings(
-    organization := "com.lightbend.play",
+    organization := "com.typesafe.play",
     name := "play-socket-io",
-    scalaVersion := scala213,
-    crossScalaVersions := Seq(scala213, scala212),
+    scalaVersion := Scala213,
+    crossScalaVersions := Seq(Scala213, Scala212),
     scalacOptions ++= Seq("-feature", "-target:jvm-1.8"),
-    scalacOptions in (Compile, doc) := Nil,
+    (Compile / doc / scalacOptions) := Nil,
     javacOptions ++= Seq("-Xlint"),
     libraryDependencies ++= Seq(
       // Production dependencies
@@ -36,27 +35,28 @@ lazy val root = (project in file("."))
       "com.typesafe.play" %% "play-guice" % playVersion % Test,
       macwire             % Test,
       // Test dependencies for running chrome driver
-      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "3.141.59",
+      "io.github.bonigarcia"    % "webdrivermanager"       % "5.1.1" % Test,
+      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.1.4" % Test,
       // Test framework dependencies
       "org.scalatest" %% "scalatest"      % "3.1.2" % Test,
       "com.novocode"  % "junit-interface" % "0.11"  % Test
     ),
-    PB.targets in Compile := Seq(
-      scalapb.gen() -> (sourceManaged in Compile).value
+    (Compile / PB.targets) := Seq(
+      scalapb.gen() -> (Compile / sourceManaged).value
     ),
-    fork in Test := true,
-    connectInput in (Test, run) := true,
+    (Test / fork) := true,
+    (Test / run / connectInput) := true,
     runChromeWebDriver := {
-      (runMain in Test).toTask(" play.socketio.RunSocketIOTests").value
+      (Test / runMain).toTask(" play.socketio.RunSocketIOTests").value
     },
     TaskKey[Unit]("runJavaServer") :=
-      (runMain in Test).toTask(" play.socketio.javadsl.TestSocketIOJavaApplication").value,
+      (Test / runMain).toTask(" play.socketio.javadsl.TestSocketIOJavaApplication").value,
     TaskKey[Unit]("runScalaServer") :=
-      (runMain in Test).toTask(" play.socketio.scaladsl.TestSocketIOScalaApplication").value,
+      (Test / runMain).toTask(" play.socketio.scaladsl.TestSocketIOScalaApplication").value,
     TaskKey[Unit]("runMultiNodeServer") :=
-      (runMain in Test).toTask(" play.socketio.scaladsl.TestMultiNodeSocketIOApplication").value,
-    test in Test := {
-      (test in Test).value
+      (Test / runMain).toTask(" play.socketio.scaladsl.TestMultiNodeSocketIOApplication").value,
+    (Test / test) := {
+      (Test / test).value
       runChromeWebDriver.value
     },
     resolvers += "jitpack".at("https://jitpack.io"),
@@ -69,8 +69,8 @@ lazy val scalaChat = (project in file("samples/scala/chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-scala-chat-example",
-    organization := "com.lightbend.play",
-    scalaVersion := scala213,
+    organization := "com.typesafe.play",
+    scalaVersion := Scala213,
     libraryDependencies += macwire % Provided
   )
 
@@ -79,8 +79,8 @@ lazy val scalaMultiRoomChat = (project in file("samples/scala/multi-room-chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-scala-multi-room-chat-example",
-    organization := "com.lightbend.play",
-    scalaVersion := scala213,
+    organization := "com.typesafe.play",
+    scalaVersion := Scala213,
     libraryDependencies += macwire % Provided
   )
 
@@ -89,8 +89,8 @@ lazy val scalaClusteredChat = (project in file("samples/scala/clustered-chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-scala-clustered-chat-example",
-    organization := "com.lightbend.play",
-    scalaVersion := scala213,
+    organization := "com.typesafe.play",
+    scalaVersion := Scala213,
     libraryDependencies ++= Seq(macwire % Provided) ++ akkaCluster
   )
 
@@ -99,8 +99,8 @@ lazy val javaChat = (project in file("samples/java/chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-java-chat-example",
-    organization := "com.lightbend.play",
-    scalaVersion := scala213,
+    organization := "com.typesafe.play",
+    scalaVersion := Scala213,
     libraryDependencies += guice
   )
 
@@ -109,8 +109,8 @@ lazy val javaMultiRoomChat = (project in file("samples/java/multi-room-chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-java-multi-room-chat-example",
-    organization := "com.lightbend.play",
-    scalaVersion := scala213,
+    organization := "com.typesafe.play",
+    scalaVersion := Scala213,
     libraryDependencies ++= Seq(guice, lombok)
   )
 
@@ -119,7 +119,20 @@ lazy val javaClusteredChat = (project in file("samples/java/clustered-chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-java-clustered-chat-example",
-    organization := "com.lightbend.play",
-    scalaVersion := scala213,
+    organization := "com.typesafe.play",
+    scalaVersion := Scala213,
     libraryDependencies ++= Seq(guice, lombok) ++ akkaCluster
   )
+
+addCommandAlias(
+  "validateCode",
+  (
+    List(
+      "headerCheckAll",
+      "scalafmtSbtCheck",
+      "scalafmtCheckAll",
+    ) ++
+      List(scalaChat, scalaMultiRoomChat, scalaClusteredChat, javaChat, javaMultiRoomChat, javaClusteredChat)
+        .flatMap(p => List("scalafmtCheckAll").map(cmd => s"${p.id}/$cmd"))
+  ).mkString(";")
+)

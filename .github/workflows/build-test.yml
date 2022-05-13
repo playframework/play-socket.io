@@ -19,10 +19,15 @@ jobs:
     with:
       cmd: sbt validateCode
 
+  check-binary-compatibility:
+    name: Binary Compatibility
+    uses: playframework/.github/.github/workflows/binary-check.yml@v2
+
   tests:
     name: Tests
     needs: # Waiting more lightweight checks
       - "check-code-style"
+      - "check-binary-compatibility"
     uses: playframework/.github/.github/workflows/cmd.yml@v2
     with:
       scala: 2.12.15, 2.13.8

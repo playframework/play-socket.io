@@ -19,6 +19,7 @@ lazy val root = (project in file("."))
   .settings(
     organization := "com.typesafe.play",
     name := "play-socket-io",
+    mimaPreviousArtifacts := Set.empty, // TODO: enable after first release
     scalaVersion := Scala213,
     crossScalaVersions := Seq(Scala213, Scala212),
     scalacOptions ++= Seq("-feature", "-target:jvm-1.8"),

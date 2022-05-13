@@ -1,6 +1,7 @@
 # Play socket.io support
 
-[![Build Status](https://travis-ci.org/playframework/play-socket.io.png?branch=main)](https://travis-ci.org/playframework/play-socket.io) [![Latest Release](https://img.shields.io/maven-central/v/com.typesafe.play/play-socket-io_2.13.svg)](https://mvnrepository.com/artifact/com.typesafe.play/play-socket-io_2.13)
+[![Build Status](https://github.com/playframework/play-socket.io/actions/workflows/build-test.yml/badge.svg)](https://github.com/playframework/play-socket.io/actions/workflows/build-test.yml)
+[![Latest Release](https://img.shields.io/maven-central/v/com.typesafe.play/play-socket-io_2.13.svg)](https://mvnrepository.com/artifact/com.typesafe.play/play-socket-io_2.13)
 
 This is the Play backend socket.io support.
 

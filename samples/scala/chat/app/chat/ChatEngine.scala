@@ -37,7 +37,7 @@ class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
     val (sink, source) = MergeHub
       .source[String]
       .toMat(BroadcastHub.sink)(Keep.both)
-      .run
+      .run()
 
     // We couple the sink and source together so that one completes, the other
     // will to, and we use this to handle our chat

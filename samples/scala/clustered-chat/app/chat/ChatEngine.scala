@@ -137,7 +137,7 @@ class ChatEngine(socketIO: SocketIO, system: ActorSystem)(implicit mat: Material
 
   val controller: EngineIOController = socketIO.builder
     .onConnect { (request, sid) =>
-      Logger.info(s"Starting $sid session")
+      Logger(this.getClass).info(s"Starting $sid session")
       // Extract the username from the header
       val username = request.getQueryString("user").getOrElse {
         throw new RuntimeException("No user parameter")

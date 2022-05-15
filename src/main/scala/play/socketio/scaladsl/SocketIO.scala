@@ -26,7 +26,7 @@ import scala.concurrent.Future
 /**
  * The engine.io system. Allows you to create engine.io controllers for handling engine.io connections.
  */
-final class SocketIO @Inject()(config: SocketIOConfig, engineIO: EngineIO)(
+final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(
     implicit ec: ExecutionContext,
     mat: Materializer
 ) {
@@ -193,9 +193,7 @@ final class SocketIO @Inject()(config: SocketIOConfig, engineIO: EngineIO)(
         connectCallback,
         errorHandler,
         defaultNamespaceCallback,
-        connectToNamespaceCallback.orElse(callback.andThen { flow =>
-          createNamespace(decoder, encoder, flow)
-        })
+        connectToNamespaceCallback.orElse(callback.andThen { flow => createNamespace(decoder, encoder, flow) })
       )
     }
 

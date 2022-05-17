@@ -57,7 +57,7 @@ object EngineIOConfig {
 }
 
 @Singleton
-class EngineIOConfigProvider @Inject()(configuration: Configuration) extends Provider[EngineIOConfig] {
+class EngineIOConfigProvider @Inject() (configuration: Configuration) extends Provider[EngineIOConfig] {
   override lazy val get: EngineIOConfig = EngineIOConfig.fromConfiguration(configuration)
 }
 
@@ -111,9 +111,7 @@ final class EngineIOController(
       case (Some(sid), Some(payload)) =>
         log.debug(s"Received push request for $sid")
 
-        (engineIOManager ? Packets(sid, transport, payload.packets, requestId)).map { _ =>
-          Ok("ok")
-        }
+        (engineIOManager ? Packets(sid, transport, payload.packets, requestId)).map { _ => Ok("ok") }
 
       // sid no payload, we're retrieving packets
       case (Some(sid), None) =>
@@ -169,9 +167,7 @@ final class EngineIOController(
 
     val in = Flow[EngineIOPacket]
       .batch(4, Vector(_))(_ :+ _)
-      .mapAsync(1) { packets =>
-        engineIOManager ? Packets(sid, transport, packets, requestId)
-      }
+      .mapAsync(1) { packets => engineIOManager ? Packets(sid, transport, packets, requestId) }
       .to(Sink.ignore.mapMaterializedValue(_.onComplete {
         case Success(s) =>
           engineIOManager ! Close(sid, transport, requestId)
@@ -192,7 +188,7 @@ final class EngineIOController(
       }
       .takeWhile(!_.isInstanceOf[Close])
       .mapConcat {
-        case Packets(_, _, packets: Seq[EngineIOPacket], _) => collection.immutable.Seq[EngineIOPacket](packets:_*)
+        case Packets(_, _, packets: Seq[EngineIOPacket], _) => collection.immutable.Seq[EngineIOPacket](packets: _*)
       }
 
     Flow.fromSinkAndSourceCoupled(in, out)
@@ -204,7 +200,7 @@ final class EngineIOController(
  * The engine.io system. Allows you to create engine.io controllers for handling engine.io connections.
  */
 @Singleton
-final class EngineIO @Inject()(
+final class EngineIO @Inject() (
     config: EngineIOConfig,
     httpErrorHandler: HttpErrorHandler,
     controllerComponents: ControllerComponents,

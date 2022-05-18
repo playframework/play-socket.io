@@ -5,7 +5,7 @@ on:
 
   push:
     branches:
-      - main # Check main branch after merge
+      - main # Check branch after merge
 
 concurrency:
   # Only run once for latest commit per ref and cancel other (previous) runs.
@@ -25,7 +25,7 @@ jobs:
 
   tests:
     name: Tests
-    needs: # Waiting more lightweight checks
+    needs:
       - "check-code-style"
       - "check-binary-compatibility"
     uses: playframework/.github/.github/workflows/cmd.yml@v2
@@ -35,7 +35,7 @@ jobs:
 
   samples:
     name: Samples
-    needs: # Waiting more lightweight checks
+    needs:
       - "tests"
     uses: playframework/.github/.github/workflows/cmd.yml@v2
     with:
@@ -47,6 +47,7 @@ jobs:
 
   finish:
     name: Finish
+    if: github.event_name == 'pull_request'
     needs: # Should be last
       - "samples"
     uses: playframework/.github/.github/workflows/rtm.yml@v2

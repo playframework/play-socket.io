@@ -80,7 +80,7 @@ class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
 
     Flow.fromSinkAndSourceCoupled(
       Flow[ChatEvent]
-      // Add the join and leave room events
+        // Add the join and leave room events
         .prepend(Source.single(JoinRoom(Some(user), room)))
         .concat(Source.single(LeaveRoom(Some(user), room)))
         .to(sink),
@@ -104,9 +104,9 @@ class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
 
           // Add the room to our flow
           broadcastSource
-          // Ensure only messages for this room get there
-          // Also filter out JoinRoom messages, since there's a race condition as to whether it will
-          // actually get here or not, so the room flow explicitly adds it.
+            // Ensure only messages for this room get there
+            // Also filter out JoinRoom messages, since there's a race condition as to whether it will
+            // actually get here or not, so the room flow explicitly adds it.
             .filter(e => e.room == room && !e.isInstanceOf[JoinRoom])
             // Take until we get a leave room message.
             .takeWhile(!_.isInstanceOf[LeaveRoom])

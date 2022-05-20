@@ -18,14 +18,13 @@ class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
   import play.socketio.scaladsl.SocketIOEventCodec._
 
   // This will decode String "chat message" events coming in
-  val decoder = decodeByName {
-    case "chat message" =>
-      decodeJson[String]
+  val decoder = decodeByName { case "chat message" =>
+    decodeJson[String]
   }
 
   // This will encode String "chat message" events going out
-  val encoder = encodeByType[String] {
-    case _: String => "chat message" -> encodeJson[String]
+  val encoder = encodeByType[String] { case _: String =>
+    "chat message" -> encodeJson[String]
   }
 
   private val chatFlow = {

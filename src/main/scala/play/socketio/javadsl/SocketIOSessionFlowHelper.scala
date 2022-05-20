@@ -43,8 +43,8 @@ private[javadsl] object SocketIOSessionFlowHelper {
       (request, sid) => connectCallback(request.asJava, sid).toScala,
       unlift(t => errorHandler(t).asScala.map(Json.toJson(_))),
       session => defaultNamespaceCallback(session).asScala,
-      unlift {
-        case (session, sid) => connectToNamespaceCallback(session, sid).asScala.map(_.asScala)
+      unlift { case (session, sid) =>
+        connectToNamespaceCallback(session, sid).asScala.map(_.asScala)
       }
     )
   }

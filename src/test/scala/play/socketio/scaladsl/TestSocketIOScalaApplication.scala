@@ -68,11 +68,11 @@ class TestSocketIOScalaApplication(initialSettings: Map[String, AnyRef]) extends
   }
 
   def createController(socketIO: SocketIO)(implicit mat: Materializer, ec: ExecutionContext) = {
-    val decoder: SocketIOEventsDecoder[SocketIOEvent] = {
-      case e => e
+    val decoder: SocketIOEventsDecoder[SocketIOEvent] = { case e =>
+      e
     }
-    val encoder: SocketIOEventsEncoder[SocketIOEvent] = {
-      case e => e
+    val encoder: SocketIOEventsEncoder[SocketIOEvent] = { case e =>
+      e
     }
 
     val (testDisconnectQueue, testDisconnectFlow) = {
@@ -90,22 +90,20 @@ class TestSocketIOScalaApplication(initialSettings: Map[String, AnyRef]) extends
         }
       }
       .defaultNamespace(decoder, encoder, Flow[SocketIOEvent])
-      .addNamespace(decoder, encoder) {
-        case (session, "/test") =>
-          Flow[SocketIOEvent].takeWhile(_.name != "disconnect me").watchTermination() { (_, terminated) =>
-            terminated.onComplete { _ =>
-              testDisconnectQueue.offer(SocketIOEvent("test disconnect", Seq(Left(JsString(session.sid))), None))
-            }
+      .addNamespace(decoder, encoder) { case (session, "/test") =>
+        Flow[SocketIOEvent].takeWhile(_.name != "disconnect me").watchTermination() { (_, terminated) =>
+          terminated.onComplete { _ =>
+            testDisconnectQueue.offer(SocketIOEvent("test disconnect", Seq(Left(JsString(session.sid))), None))
           }
+        }
       }
-      .addNamespace(decoder, encoder) {
-        case (_, "/failable") =>
-          Flow[SocketIOEvent].map { event =>
-            if (event.name == "fail me") {
-              throw new RuntimeException("you failed")
-            }
-            event
+      .addNamespace(decoder, encoder) { case (_, "/failable") =>
+        Flow[SocketIOEvent].map { event =>
+          if (event.name == "fail me") {
+            throw new RuntimeException("you failed")
           }
+          event
+        }
       }
       .addNamespace("/test-disconnect-listener", decoder, encoder, testDisconnectFlow)
       .createController()

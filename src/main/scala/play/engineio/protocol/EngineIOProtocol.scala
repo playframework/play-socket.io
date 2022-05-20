@@ -304,7 +304,9 @@ object BinaryEngineIOPayloadEncoding {
         BinaryPacketBytes ++ encodeInt(data.size + 1) ++ LengthTerminatorBytes ++ typeId.binaryEncoded ++ data
       case Utf8EngineIOPacket(typeId, text) =>
         val data = ByteString(text)
-        StringPacketBytes ++ encodeInt(data.size + 1) ++ LengthTerminatorBytes ++ ByteString(typeId.asciiEncoded) ++ data
+        StringPacketBytes ++ encodeInt(data.size + 1) ++ LengthTerminatorBytes ++ ByteString(
+          typeId.asciiEncoded
+        ) ++ data
     }
   }
 

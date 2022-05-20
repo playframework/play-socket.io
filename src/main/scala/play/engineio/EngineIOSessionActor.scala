@@ -124,9 +124,8 @@ class EngineIOSessionActor[SessionData](
   private val sessionTick = context.system.scheduler.schedule(config.pingInterval, config.pingInterval, self, Tick)
 
   override def postStop() = {
-    retrieveRequesters.foreach {
-      case (transport, (RetrieveRequester(requester, requestId))) =>
-        requester ! Close(sid, transport, requestId)
+    retrieveRequesters.foreach { case (transport, (RetrieveRequester(requester, requestId))) =>
+      requester ! Close(sid, transport, requestId)
     }
     messagesReceivedSenders.foreach { messageSender => messageSender ! Status.Failure(SessionClosed) }
 
@@ -168,8 +167,8 @@ class EngineIOSessionActor[SessionData](
       handler
         .onConnect(request, sid)
         .map(flow => Connected(flow, requestId))
-        .recover {
-          case e => ConnectionRefused(e)
+        .recover { case e =>
+          ConnectionRefused(e)
         }
         .pipeTo(self)(sender)
     } catch {

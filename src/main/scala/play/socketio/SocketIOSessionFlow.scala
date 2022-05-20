@@ -71,11 +71,10 @@ object SocketIOSessionFlow {
                 BroadcastHub.sink[NamespacedSocketIOMessage],
                 MergeHub.source[NamespacedSocketIOMessage]
               )(Keep.both)
-            ) {
-              case (receiver, (broadcastSource, mergeSink)) =>
-                val demuxMuxer = new NamespaceDemuxMuxer(broadcastSource, mergeSink)
-                receiver.provideNamespaceDemuxMuxer(demuxMuxer)
-                NotUsed
+            ) { case (receiver, (broadcastSource, mergeSink)) =>
+              val demuxMuxer = new NamespaceDemuxMuxer(broadcastSource, mergeSink)
+              receiver.provideNamespaceDemuxMuxer(demuxMuxer)
+              NotUsed
             }
         }
       }
@@ -304,8 +303,8 @@ private class SocketIOSessionStage[SessionData](
               }
 
               val packet = if (event.arguments.forall(_.isLeft)) {
-                val data = JsString(event.name) +: event.arguments.collect {
-                  case Left(arg) => arg
+                val data = JsString(event.name) +: event.arguments.collect { case Left(arg) =>
+                  arg
                 }
                 SocketIOEventPacket(namespace, data, maybeAckId)
               } else {
@@ -344,7 +343,8 @@ private class SocketIOSessionStage[SessionData](
                   connectNamespace(
                     namespace,
                     connectToNamespaceCallback.applyOrElse(
-                      (session, ns), { _: (SocketIOSession[SessionData], String) => throw NamespaceNotFound(namespace) }
+                      (session, ns),
+                      { _: (SocketIOSession[SessionData], String) => throw NamespaceNotFound(namespace) }
                     )
                   )
               }
@@ -440,8 +440,8 @@ private class SocketIOSessionStage[SessionData](
       }
 
       def cleanupAcks(): Unit = {
-        ackFunctions = ackFunctions.filterNot {
-          case (_, (deadline, _)) => deadline.isOverdue()
+        ackFunctions = ackFunctions.filterNot { case (_, (deadline, _)) =>
+          deadline.isOverdue()
         }
       }
 
@@ -473,7 +473,7 @@ private class NamespaceDemuxMuxer(
 
   def addNamespace(namespace: Option[String], flow: Flow[SocketIOEvent, SocketIOEvent, _]): Unit = {
     broadcastSource
-    // Demux to only handle events for this namespace
+      // Demux to only handle events for this namespace
       .filter(_.namespace == namespace)
       // Take until we get a disconnect message, either terminating or propagating errors to th eflow
       .takeWhile {
@@ -483,8 +483,8 @@ private class NamespaceDemuxMuxer(
         case _ => false
       }
       // Remove the namespace
-      .collect {
-        case NamespacedSocketIOEvent(_, event) => event
+      .collect { case NamespacedSocketIOEvent(_, event) =>
+        event
       }
       // And send through the namespace flow
       .via(flow)
@@ -493,8 +493,8 @@ private class NamespaceDemuxMuxer(
       // Append a disconnect message to the output
       .concat(Source.single(DisconnectSocketIONamespace(namespace, None)))
       // And if there's an error, translate it to a disconnect message
-      .recover {
-        case e => DisconnectSocketIONamespace(namespace, Some(e))
+      .recover { case e =>
+        DisconnectSocketIONamespace(namespace, Some(e))
       }
       // And feed it into the muxer
       .runWith(mergeSink)
@@ -522,9 +522,15 @@ private class FlowCallbackAck(callback: SocketIOPacket => Unit, namespace: Optio
     extends SocketIOEventAck {
   override def apply(args: Seq[Either[JsValue, ByteString]]): Unit = {
     if (args.forall(_.isLeft)) {
-      callback(SocketIOAckPacket(namespace, args.collect {
-        case Left(jsValue) => jsValue
-      }, id))
+      callback(
+        SocketIOAckPacket(
+          namespace,
+          args.collect { case Left(jsValue) =>
+            jsValue
+          },
+          id
+        )
+      )
     } else {
       callback(SocketIOBinaryAckPacket(namespace, args, id))
     }

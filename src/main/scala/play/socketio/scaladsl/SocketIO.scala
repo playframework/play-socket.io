@@ -26,8 +26,8 @@ import scala.concurrent.Future
 /**
  * The engine.io system. Allows you to create engine.io controllers for handling engine.io connections.
  */
-final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(
-    implicit ec: ExecutionContext,
+final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(implicit
+    ec: ExecutionContext,
     mat: Materializer
 ) {
 
@@ -44,7 +44,8 @@ final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(
    */
   def builder: SocketIOBuilder[Any] = {
     new SocketIOBuilder[Any](
-      (_, _) => Future.successful(NotUsed), {
+      (_, _) => Future.successful(NotUsed),
+      {
         case e if e.getMessage != null => JsString(e.getMessage)
         case e                         => JsString(e.getClass.getName)
       },
@@ -166,8 +167,8 @@ final class SocketIO @Inject() (config: SocketIOConfig, engineIO: EngineIO)(
         encoder: SocketIOEventsEncoder[Out],
         flow: Flow[In, Out, _]
     ): SocketIOBuilder[SessionData] = {
-      addNamespace(decoder, encoder) {
-        case (_, NamespaceWithQuery(`name`, _)) => flow
+      addNamespace(decoder, encoder) { case (_, NamespaceWithQuery(`name`, _)) =>
+        flow
       }
     }
 

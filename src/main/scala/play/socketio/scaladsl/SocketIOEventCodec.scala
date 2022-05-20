@@ -111,8 +111,8 @@ object SocketIOEventCodec {
       }
       override def applyOrElse[T1 <: T, B1 >: SocketIOEvent](t: T1, default: (T1) => B1) = {
         encoders
-          .andThen {
-            case (name, encoder) => encoder.asInstanceOf[Function[Any, SocketIOEvent]](t).copy(name = name)
+          .andThen { case (name, encoder) =>
+            encoder.asInstanceOf[Function[Any, SocketIOEvent]](t).copy(name = name)
           }
           .applyOrElse(t, default)
       }
@@ -333,8 +333,8 @@ object SocketIOEventCodec {
      * The resultant encoder uses both encoders to encode a tuple into two arguments.
      */
     def and[T1](second: SocketIOArgEncoder[T1]): SocketIOArgsEncoder[(T, T1)] = {
-      SocketIOArgsEncoder {
-        case (t, t1) => Seq(first.encodeArg(t), second.encodeArg(t1))
+      SocketIOArgsEncoder { case (t, t1) =>
+        Seq(first.encodeArg(t), second.encodeArg(t1))
       }
     }
 
@@ -373,10 +373,9 @@ object SocketIOEventCodec {
      * The resultant encoder uses all encoders to encode a tuple into three arguments.
      */
     def and[T3](third: SocketIOArgEncoder[T3]): SocketIOArgsEncoder[(T1, T2, T3)] = {
-      SocketIOArgsEncoder {
-        case (t1, t2, t3) =>
-          val initArgs = init.encodeArgs((t1, t2))
-          initArgs :+ third.encodeArg(t3)
+      SocketIOArgsEncoder { case (t1, t2, t3) =>
+        val initArgs = init.encodeArgs((t1, t2))
+        initArgs :+ third.encodeArg(t3)
       }
     }
 
@@ -397,12 +396,11 @@ object SocketIOEventCodec {
      */
     def withAckDecoder[A](
         decoder: SocketIOArgsDecoder[A]
-    ): SocketIOEventCodec.SocketIOEventEncoder[(T1, T2, A => Unit)] = {
-      case (t1, t2, ack) =>
-        SocketIOEvent.unnamed(
-          init.encodeArgs((t1, t2)),
-          Some(SocketIOEventAck(ack.compose(decoder.decodeArgs)))
-        )
+    ): SocketIOEventCodec.SocketIOEventEncoder[(T1, T2, A => Unit)] = { case (t1, t2, ack) =>
+      SocketIOEvent.unnamed(
+        init.encodeArgs((t1, t2)),
+        Some(SocketIOEventAck(ack.compose(decoder.decodeArgs)))
+      )
     }
   }
 
@@ -417,10 +415,9 @@ object SocketIOEventCodec {
      * The resultant encoder uses all encoders to encode a tuple into four arguments.
      */
     def and[T4](fourth: SocketIOArgEncoder[T4]): SocketIOArgsEncoder[(T1, T2, T3, T4)] = {
-      SocketIOArgsEncoder {
-        case (t1, t2, t3, t4) =>
-          val initArgs = init.encodeArgs((t1, t2, t3))
-          initArgs :+ fourth.encodeArg(t4)
+      SocketIOArgsEncoder { case (t1, t2, t3, t4) =>
+        val initArgs = init.encodeArgs((t1, t2, t3))
+        initArgs :+ fourth.encodeArg(t4)
       }
     }
 
@@ -441,12 +438,11 @@ object SocketIOEventCodec {
      */
     def withAckDecoder[A](
         decoder: SocketIOArgsDecoder[A]
-    ): SocketIOEventCodec.SocketIOEventEncoder[(T1, T2, T3, A => Unit)] = {
-      case (t1, t2, t3, ack) =>
-        SocketIOEvent.unnamed(
-          init.encodeArgs((t1, t2, t3)),
-          Some(SocketIOEventAck(ack.compose(decoder.decodeArgs)))
-        )
+    ): SocketIOEventCodec.SocketIOEventEncoder[(T1, T2, T3, A => Unit)] = { case (t1, t2, t3, ack) =>
+      SocketIOEvent.unnamed(
+        init.encodeArgs((t1, t2, t3)),
+        Some(SocketIOEventAck(ack.compose(decoder.decodeArgs)))
+      )
     }
   }
 }

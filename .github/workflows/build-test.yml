@@ -30,7 +30,7 @@ jobs:
       - "check-binary-compatibility"
     uses: playframework/.github/.github/workflows/cmd.yml@v3
     with:
-      scala: 2.12.17, 2.13.8
+      scala: 2.12.x, 2.13.x
       cmd: sbt ++$MATRIX_SCALA test
 
   samples:

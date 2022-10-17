@@ -15,29 +15,29 @@ concurrency:
 jobs:
   check-code-style:
     name: Code Style
-    uses: playframework/.github/.github/workflows/cmd.yml@v2
+    uses: playframework/.github/.github/workflows/cmd.yml@v3
     with:
       cmd: sbt validateCode
 
   check-binary-compatibility:
     name: Binary Compatibility
-    uses: playframework/.github/.github/workflows/binary-check.yml@v2
+    uses: playframework/.github/.github/workflows/binary-check.yml@v3
 
   tests:
     name: Tests
     needs:
       - "check-code-style"
       - "check-binary-compatibility"
-    uses: playframework/.github/.github/workflows/cmd.yml@v2
+    uses: playframework/.github/.github/workflows/cmd.yml@v3
     with:
-      scala: 2.12.16, 2.13.8
+      scala: 2.12.x, 2.13.x
       cmd: sbt ++$MATRIX_SCALA test
 
   samples:
     name: Samples
     needs:
       - "tests"
-    uses: playframework/.github/.github/workflows/cmd.yml@v2
+    uses: playframework/.github/.github/workflows/cmd.yml@v3
     with:
       add-dimensions: >-
         {
@@ -50,4 +50,4 @@ jobs:
     if: github.event_name == 'pull_request'
     needs: # Should be last
       - "samples"
-    uses: playframework/.github/.github/workflows/rtm.yml@v2
+    uses: playframework/.github/.github/workflows/rtm.yml@v3

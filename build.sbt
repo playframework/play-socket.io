@@ -22,7 +22,7 @@ lazy val root = (project in file("."))
     mimaPreviousArtifacts := Set.empty, // TODO: enable after first release
     scalaVersion := Scala213,
     crossScalaVersions := Seq(Scala213, Scala212),
-    scalacOptions ++= Seq("-feature", "-target:jvm-1.8"),
+    scalacOptions ++= Seq("-feature", "-release", "11"),
     (Compile / doc / scalacOptions) := Nil,
     javacOptions ++= Seq("-Xlint"),
     libraryDependencies ++= Seq(
@@ -37,7 +37,7 @@ lazy val root = (project in file("."))
       macwire              % Test,
       // Test dependencies for running chrome driver
       "io.github.bonigarcia"    % "webdrivermanager"       % "5.2.3" % Test,
-      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.4.0" % Test,
+      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.5.0" % Test,
       // Test framework dependencies
       "org.scalatest" %% "scalatest"       % "3.1.2" % Test,
       "com.novocode"   % "junit-interface" % "0.11"  % Test

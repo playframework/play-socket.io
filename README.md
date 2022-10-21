@@ -48,6 +48,6 @@ There are multiple different backends that the tests are run against, including 
 
 The test runner runs the tests against each of these backends, using phantomjs as the browser, and it extracts the test results out and prints them nicely to the console as the tests are running.
 
-## Support
+## Releasing a new version
 
-The Play-backed socket.io support library is *[Community Driven](https://developer.lightbend.com/docs/introduction/getting-help/support-terminology.html)*.
+See https://github.com/playframework/.github/blob/main/RELEASING.md

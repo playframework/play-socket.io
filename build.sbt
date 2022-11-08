@@ -36,7 +36,7 @@ lazy val root = (project in file("."))
       "com.typesafe.play" %% "play-guice" % playVersion % Test,
       macwire              % Test,
       // Test dependencies for running chrome driver
-      "io.github.bonigarcia"    % "webdrivermanager"       % "5.3.1" % Test,
+      "io.github.bonigarcia"    % "webdrivermanager"       % "5.2.3" % Test,
       "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.5.2" % Test,
       // Test framework dependencies
       "org.scalatest" %% "scalatest"       % "3.1.2" % Test,

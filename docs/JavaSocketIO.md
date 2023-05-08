@@ -612,7 +612,7 @@ akka {
 }
 ```
 
-Now the only thing needed to be done is to configure Akka clustering, which is beyond the scope of this documentation. Full documentation for configuring Akka clustering can be found [here](http://doc.akka.io/docs/akka/current/scala/cluster-usage.html).
+Now the only thing needed to be done is to configure Akka clustering, which is beyond the scope of this documentation. Full documentation for configuring Akka clustering can be found [here](http://doc.akka.io/docs/akka/2.6/scala/cluster-usage.html).
 
 ## Configuration
 

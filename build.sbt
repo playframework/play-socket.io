@@ -61,7 +61,11 @@ lazy val root = (project in file("."))
       runChromeWebDriver.value
     },
     resolvers += "jitpack".at("https://jitpack.io"),
-    headerLicense := Some(HeaderLicense.Custom("Copyright (C) Lightbend Inc. <https://www.lightbend.com>")),
+    headerLicense := Some(
+      HeaderLicense.Custom(
+        "Copyright (C) from 2022 The Play Framework Contributors <https://github.com/playframework>, 2011-2021 Lightbend Inc. <https://www.lightbend.com>"
+      )
+    ),
     headerEmptyLine := false
   )
 

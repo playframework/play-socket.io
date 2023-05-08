@@ -31,7 +31,7 @@ class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
     // We use a MergeHub to merge all the incoming chat messages from all the
     // connected users into one flow, and we feed that straight into a
     // BroadcastHub to broadcast them out again to all the connected users.
-    // See http://doc.akka.io/docs/akka/snapshot/scala/stream/stream-dynamic.html
+    // See http://doc.akka.io/docs/akka/2.6/scala/stream/stream-dynamic.html
     // for details on these features.
     val (sink, source) = MergeHub
       .source[String]

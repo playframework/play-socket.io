@@ -40,7 +40,7 @@ val commonDependencies = Seq(
   macwire              % Test,
   // Test dependencies for running chrome driver
   "io.github.bonigarcia"    % "webdrivermanager"       % "5.3.2" % Test,
-  "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.5.3" % Test,
+  "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.9.1" % Test,
   // Test framework dependencies
   "org.scalatest" %% "scalatest"       % "3.2.16" % Test,
   "com.novocode"   % "junit-interface" % "0.11"  % Test

@@ -77,7 +77,7 @@ class TestSocketIOScalaApplication(initialSettings: Map[String, AnyRef]) extends
 
     val (testDisconnectQueue, testDisconnectFlow) = {
       val (sourceQueue, source) =
-        Source.queue[SocketIOEvent](10, OverflowStrategy.backpressure).toMat(BroadcastHub.sink)(Keep.both).run
+        Source.queue[SocketIOEvent](10, OverflowStrategy.backpressure).toMat(BroadcastHub.sink)(Keep.both).run()
       (sourceQueue, Flow.fromSinkAndSource(Sink.ignore, source))
     }
 

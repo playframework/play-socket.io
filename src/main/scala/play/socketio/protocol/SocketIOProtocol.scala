@@ -163,7 +163,7 @@ object SocketIOPacket {
     }
 
     TextEngineIOMessage(message.toString) ::
-      extraPackets.map(BinaryEngineIOMessage)
+      extraPackets.map(play.engineio.BinaryEngineIOMessage.apply)
   }
 
   /**

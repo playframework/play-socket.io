@@ -6,4 +6,5 @@ object Dependencies {
 
   val AkkaVersion = "2.6.20"
   val PlayVersion = "2.9.0-M4"
+  val PlayVersion212 = "2.8.9"
 }

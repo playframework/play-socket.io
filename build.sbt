@@ -3,6 +3,7 @@ import Dependencies.Scala212
 import Dependencies.Scala213
 import Dependencies.Scala3
 import Dependencies.PlayVersion
+import Dependencies.PlayVersion212
 
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
 
@@ -11,6 +12,38 @@ val lombok  = "org.projectlombok"         % "lombok" % "1.18.8" % Provided
 val akkaCluster = Seq(
   "com.typesafe.akka" %% "akka-cluster"       % AkkaVersion,
   "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
+)
+
+val play212Dependencies = Seq(
+  "com.typesafe.play" %% "play" % PlayVersion212,
+  // Test dependencies for running a Play server
+  "com.typesafe.play" %% "play-akka-http-server" % PlayVersion212 % Test,
+  "com.typesafe.play" %% "play-logback"          % PlayVersion212 % Test,
+  // Test dependencies for Scala/Java dependency injection
+  "com.typesafe.play" %% "play-guice" % PlayVersion212 % Test,
+)
+
+val playDependencies = Seq(
+  // Production dependencies
+  "com.typesafe.play" %% "play" % PlayVersion,
+  // Test dependencies for running a Play server
+  "com.typesafe.play" %% "play-akka-http-server" % PlayVersion % Test,
+  "com.typesafe.play" %% "play-logback"          % PlayVersion % Test,
+  // Test dependencies for Scala/Java dependency injection
+  "com.typesafe.play" %% "play-guice" % PlayVersion % Test,
+)
+
+val commonDependencies = Seq(
+  // Production dependencies
+  "com.typesafe.akka" %% "akka-remote" % AkkaVersion,
+  // Test dependencies for Scala/Java dependency injection
+  macwire              % Test,
+  // Test dependencies for running chrome driver
+  "io.github.bonigarcia"    % "webdrivermanager"       % "5.3.2" % Test,
+  "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.5.3" % Test,
+  // Test framework dependencies
+  "org.scalatest" %% "scalatest"       % "3.2.16" % Test,
+  "com.novocode"   % "junit-interface" % "0.11"  % Test
 )
 
 // Customise sbt-dynver's behaviour to make it work with tags which aren't v-prefixed
@@ -25,29 +58,18 @@ lazy val root = (project in file("."))
     crossScalaVersions := Seq(Scala213, Scala212, Scala3),
     scalacOptions ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((3, n))   =>  Seq("-feature", "-release", "11", "-rewrite", "-source:3.3-migration", "-explain")
+        case Some((3, n))   =>  Seq("-feature", "-release", "11")
         case _              =>  Seq("-feature", "-release", "11", "-Xsource:3")
       }
     },
     (Compile / doc / scalacOptions) := Nil,
     javacOptions ++= Seq("-Xlint"),
-    libraryDependencies ++= Seq(
-      // Production dependencies
-      "com.typesafe.play" %% "play"        % PlayVersion,
-      "com.typesafe.akka" %% "akka-remote" % AkkaVersion,
-      // Test dependencies for running a Play server
-      "com.typesafe.play" %% "play-akka-http-server" % PlayVersion % Test,
-      "com.typesafe.play" %% "play-logback"          % PlayVersion % Test,
-      // Test dependencies for Scala/Java dependency injection
-      "com.typesafe.play" %% "play-guice" % PlayVersion % Test,
-      macwire              % Test,
-      // Test dependencies for running chrome driver
-      "io.github.bonigarcia"    % "webdrivermanager"       % "5.3.2" % Test,
-      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.5.3" % Test,
-      // Test framework dependencies
-      "org.scalatest" %% "scalatest"       % "3.2.16" % Test,
-      "com.novocode"   % "junit-interface" % "0.11"  % Test
-    ),
+    libraryDependencies ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, 12))  =>  commonDependencies ++ play212Dependencies
+        case _              =>  commonDependencies ++ playDependencies
+      }
+    },
     (Compile / PB.targets) := Seq(
       scalapb.gen() -> (Compile / sourceManaged).value
     ),

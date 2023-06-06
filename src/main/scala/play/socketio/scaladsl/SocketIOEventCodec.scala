@@ -65,7 +65,7 @@ object SocketIOEventCodec {
       override def applyOrElse[A1 <: SocketIOEvent, B1 >: T](event: A1, default: (A1) => B1) = {
         decoders
           .andThen(decoder => decoder.apply(event))
-          .applyOrElse(event.name, { _: String => default(event) })
+          .applyOrElse(event.name, { (_: String) => default(event) })
       }
     }
 

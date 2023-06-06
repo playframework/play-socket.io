@@ -184,7 +184,7 @@ class SocketIOEventCodecSpec extends AnyWordSpec with Matchers with OptionValues
       val encoder = encodeByType[Any] {
         case _: String => "string" -> encodeJson[String]
         case _: Int =>
-          "int" -> encodeJson[String].compose { i: Int => i.toString }
+          "int" -> encodeJson[String].compose { (i: Int) => i.toString }
       }
 
       val e1 = encoder("arg")

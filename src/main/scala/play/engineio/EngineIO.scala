@@ -26,9 +26,11 @@ import play.api.inject.Module
 import play.api.mvc._
 import play.engineio.EngineIOManagerActor._
 import play.engineio.protocol._
+import play.engineio.protocol.EngineIOTransport
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration._
 import scala.util.Failure
 import scala.util.Success
@@ -86,8 +88,8 @@ final class EngineIOController(
 )(implicit ec: ExecutionContext)
     extends AbstractController(controllerComponents) {
 
-  private val log              = Logger(classOf[EngineIOController])
-  private implicit val timeout = Timeout(config.pingTimeout)
+  private val log                       = Logger(classOf[EngineIOController])
+  private implicit val timeout: Timeout = Timeout(config.pingTimeout)
 
   /**
    * The endpoint to route to from a router.

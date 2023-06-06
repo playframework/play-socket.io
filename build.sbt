@@ -1,7 +1,9 @@
 import Dependencies.AkkaVersion
 import Dependencies.Scala212
 import Dependencies.Scala213
-import play.core.PlayVersion.{ current => playVersion }
+import Dependencies.Scala3
+import Dependencies.PlayVersion
+import Dependencies.PlayVersion212
 
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
 
@@ -10,6 +12,38 @@ val lombok  = "org.projectlombok"         % "lombok" % "1.18.8" % Provided
 val akkaCluster = Seq(
   "com.typesafe.akka" %% "akka-cluster"       % AkkaVersion,
   "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
+)
+
+val play212Dependencies = Seq(
+  "com.typesafe.play" %% "play" % PlayVersion212,
+  // Test dependencies for running a Play server
+  "com.typesafe.play" %% "play-akka-http-server" % PlayVersion212 % Test,
+  "com.typesafe.play" %% "play-logback"          % PlayVersion212 % Test,
+  // Test dependencies for Scala/Java dependency injection
+  "com.typesafe.play" %% "play-guice" % PlayVersion212 % Test,
+)
+
+val playDependencies = Seq(
+  // Production dependencies
+  "com.typesafe.play" %% "play" % PlayVersion,
+  // Test dependencies for running a Play server
+  "com.typesafe.play" %% "play-akka-http-server" % PlayVersion % Test,
+  "com.typesafe.play" %% "play-logback"          % PlayVersion % Test,
+  // Test dependencies for Scala/Java dependency injection
+  "com.typesafe.play" %% "play-guice" % PlayVersion % Test,
+)
+
+val commonDependencies = Seq(
+  // Production dependencies
+  "com.typesafe.akka" %% "akka-remote" % AkkaVersion,
+  // Test dependencies for Scala/Java dependency injection
+  macwire % Test,
+  // Test dependencies for running chrome driver
+  "io.github.bonigarcia"    % "webdrivermanager"       % "5.3.2" % Test,
+  "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.9.1" % Test,
+  // Test framework dependencies
+  "org.scalatest" %% "scalatest"       % "3.2.16" % Test,
+  "com.novocode"   % "junit-interface" % "0.11"   % Test
 )
 
 // Customise sbt-dynver's behaviour to make it work with tags which aren't v-prefixed
@@ -21,27 +55,21 @@ lazy val root = (project in file("."))
     name := "play-socket-io",
     mimaPreviousArtifacts := Set.empty, // TODO: enable after first release
     scalaVersion := Scala213,
-    crossScalaVersions := Seq(Scala213, Scala212),
-    scalacOptions ++= Seq("-feature", "-release", "11"),
+    crossScalaVersions := Seq(Scala213, Scala212, Scala3),
+    scalacOptions ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((3, n)) => Seq("-feature", "-release", "11")
+        case _            => Seq("-feature", "-release", "11", "-Xsource:3")
+      }
+    },
     (Compile / doc / scalacOptions) := Nil,
     javacOptions ++= Seq("-Xlint"),
-    libraryDependencies ++= Seq(
-      // Production dependencies
-      "com.typesafe.play" %% "play"        % playVersion,
-      "com.typesafe.akka" %% "akka-remote" % AkkaVersion,
-      // Test dependencies for running a Play server
-      "com.typesafe.play" %% "play-akka-http-server" % playVersion % Test,
-      "com.typesafe.play" %% "play-logback"          % playVersion % Test,
-      // Test dependencies for Scala/Java dependency injection
-      "com.typesafe.play" %% "play-guice" % playVersion % Test,
-      macwire              % Test,
-      // Test dependencies for running chrome driver
-      "io.github.bonigarcia"    % "webdrivermanager"       % "5.3.2" % Test,
-      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.9.1" % Test,
-      // Test framework dependencies
-      "org.scalatest" %% "scalatest"       % "3.1.2" % Test,
-      "com.novocode"   % "junit-interface" % "0.11"  % Test
-    ),
+    libraryDependencies ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, 12)) => commonDependencies ++ play212Dependencies
+        case _             => commonDependencies ++ playDependencies
+      }
+    },
     (Compile / PB.targets) := Seq(
       scalapb.gen() -> (Compile / sourceManaged).value
     ),
@@ -76,6 +104,7 @@ lazy val scalaChat = (project in file("samples/scala/chat"))
     name := "play-socket.io-scala-chat-example",
     organization := "com.typesafe.play",
     scalaVersion := Scala213,
+    crossScalaVersions := Seq(Scala213, Scala212, Scala3),
     libraryDependencies += macwire % Provided
   )
 
@@ -86,6 +115,7 @@ lazy val scalaMultiRoomChat = (project in file("samples/scala/multi-room-chat"))
     name := "play-socket.io-scala-multi-room-chat-example",
     organization := "com.typesafe.play",
     scalaVersion := Scala213,
+    crossScalaVersions := Seq(Scala213, Scala212, Scala3),
     libraryDependencies += macwire % Provided
   )
 
@@ -96,6 +126,7 @@ lazy val scalaClusteredChat = (project in file("samples/scala/clustered-chat"))
     name := "play-socket.io-scala-clustered-chat-example",
     organization := "com.typesafe.play",
     scalaVersion := Scala213,
+    crossScalaVersions := Seq(Scala213, Scala212, Scala3),
     libraryDependencies ++= Seq(macwire % Provided) ++ akkaCluster
   )
 
@@ -106,6 +137,7 @@ lazy val javaChat = (project in file("samples/java/chat"))
     name := "play-socket.io-java-chat-example",
     organization := "com.typesafe.play",
     scalaVersion := Scala213,
+    crossScalaVersions := Seq(Scala213, Scala212, Scala3),
     libraryDependencies += guice
   )
 
@@ -116,6 +148,7 @@ lazy val javaMultiRoomChat = (project in file("samples/java/multi-room-chat"))
     name := "play-socket.io-java-multi-room-chat-example",
     organization := "com.typesafe.play",
     scalaVersion := Scala213,
+    crossScalaVersions := Seq(Scala213, Scala212, Scala3),
     libraryDependencies ++= Seq(guice, lombok)
   )
 
@@ -126,6 +159,7 @@ lazy val javaClusteredChat = (project in file("samples/java/clustered-chat"))
     name := "play-socket.io-java-clustered-chat-example",
     organization := "com.typesafe.play",
     scalaVersion := Scala213,
+    crossScalaVersions := Seq(Scala213, Scala212, Scala3),
     libraryDependencies ++= Seq(guice, lombok) ++ akkaCluster
   )
 

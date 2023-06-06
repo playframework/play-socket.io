@@ -37,13 +37,13 @@ val commonDependencies = Seq(
   // Production dependencies
   "com.typesafe.akka" %% "akka-remote" % AkkaVersion,
   // Test dependencies for Scala/Java dependency injection
-  macwire              % Test,
+  macwire % Test,
   // Test dependencies for running chrome driver
   "io.github.bonigarcia"    % "webdrivermanager"       % "5.3.2" % Test,
   "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.9.1" % Test,
   // Test framework dependencies
   "org.scalatest" %% "scalatest"       % "3.2.16" % Test,
-  "com.novocode"   % "junit-interface" % "0.11"  % Test
+  "com.novocode"   % "junit-interface" % "0.11"   % Test
 )
 
 // Customise sbt-dynver's behaviour to make it work with tags which aren't v-prefixed
@@ -58,16 +58,16 @@ lazy val root = (project in file("."))
     crossScalaVersions := Seq(Scala213, Scala212, Scala3),
     scalacOptions ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((3, n))   =>  Seq("-feature", "-release", "11")
-        case _              =>  Seq("-feature", "-release", "11", "-Xsource:3")
+        case Some((3, n)) => Seq("-feature", "-release", "11")
+        case _            => Seq("-feature", "-release", "11", "-Xsource:3")
       }
     },
     (Compile / doc / scalacOptions) := Nil,
     javacOptions ++= Seq("-Xlint"),
     libraryDependencies ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, 12))  =>  commonDependencies ++ play212Dependencies
-        case _              =>  commonDependencies ++ playDependencies
+        case Some((2, 12)) => commonDependencies ++ play212Dependencies
+        case _             => commonDependencies ++ playDependencies
       }
     },
     (Compile / PB.targets) := Seq(

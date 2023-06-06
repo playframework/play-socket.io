@@ -88,7 +88,7 @@ final class EngineIOController(
 )(implicit ec: ExecutionContext)
     extends AbstractController(controllerComponents) {
 
-  private val log              = Logger(classOf[EngineIOController])
+  private val log                       = Logger(classOf[EngineIOController])
   private implicit val timeout: Timeout = Timeout(config.pingTimeout)
 
   /**

@@ -1,4 +1,4 @@
-addSbtPlugin("com.typesafe"      % "sbt-mima-plugin" % "1.1.1")
+addSbtPlugin("com.typesafe"      % "sbt-mima-plugin" % "1.1.2")
 addSbtPlugin("de.heikoseeberger" % "sbt-header"      % "5.10.0")
 addSbtPlugin("org.scalameta"     % "sbt-scalafmt"    % "2.5.0")
 

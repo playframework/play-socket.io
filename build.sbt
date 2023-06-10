@@ -37,7 +37,7 @@ lazy val root = (project in file("."))
       macwire              % Test,
       // Test dependencies for running chrome driver
       "io.github.bonigarcia"    % "webdrivermanager"       % "5.3.2" % Test,
-      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.5.3" % Test,
+      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.9.1" % Test,
       // Test framework dependencies
       "org.scalatest" %% "scalatest"       % "3.1.2" % Test,
       "com.novocode"   % "junit-interface" % "0.11"  % Test
@@ -61,7 +61,11 @@ lazy val root = (project in file("."))
       runChromeWebDriver.value
     },
     resolvers += "jitpack".at("https://jitpack.io"),
-    headerLicense := Some(HeaderLicense.Custom("Copyright (C) Lightbend Inc. <https://www.lightbend.com>")),
+    headerLicense := Some(
+      HeaderLicense.Custom(
+        "Copyright (C) from 2022 The Play Framework Contributors <https://github.com/playframework>, 2011-2021 Lightbend Inc. <https://www.lightbend.com>"
+      )
+    ),
     headerEmptyLine := false
   )
 

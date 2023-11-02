@@ -15,11 +15,14 @@ val akkaCluster = Seq(
 // Customise sbt-dynver's behaviour to make it work with tags which aren't v-prefixed
 (ThisBuild / dynverVTagPrefix) := false
 
+// TODO: enable after first release
+val previousVersion: Option[String] = None
+
 lazy val root = (project in file("."))
   .settings(
     organization := "com.typesafe.play",
     name := "play-socket-io",
-    mimaPreviousArtifacts := Set.empty, // TODO: enable after first release
+    mimaPreviousArtifacts := previousVersion.map(organization.value %% moduleName.value % _).toSet,
     scalaVersion := Scala213,
     crossScalaVersions := Seq(Scala213, Scala212),
     scalacOptions ++= Seq("-feature", "-release", "11"),

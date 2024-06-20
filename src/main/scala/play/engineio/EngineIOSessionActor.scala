@@ -121,7 +121,8 @@ class EngineIOSessionActor[SessionData](
   import EngineIOManagerActor._
   import EngineIOSessionActor._
 
-  private val sessionTick = context.system.scheduler.schedule(config.pingInterval, config.pingInterval, self, Tick)
+  private val sessionTick =
+    context.system.scheduler.scheduleAtFixedRate(config.pingInterval, config.pingInterval, self, Tick)
 
   override def postStop() = {
     retrieveRequesters.foreach { case (transport, (RetrieveRequester(requester, requestId))) =>

@@ -4,7 +4,7 @@ addSbtPlugin("org.scalameta"     % "sbt-scalafmt"    % "2.5.0")
 
 addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.7.3")
 
-addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.5.11")
+addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.6.0")
 
 // Protobuf
 addSbtPlugin("com.thesamet"                    % "sbt-protoc"     % "1.0.6")

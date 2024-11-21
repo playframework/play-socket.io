@@ -48,7 +48,7 @@ public class TestSocketIOJavaApplication implements TestSocketIOApplication {
             bind(Router.class).toProvider(new RouterProvider(routerBuilder));
           }
         })
-        .build().getWrappedApplication();
+        .build().asScala();
 
     System.out.println("Started Java application.");
     return application;

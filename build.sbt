@@ -5,7 +5,7 @@ import Dependencies.Scala3
 
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
 
-val macwire = "com.softwaremill.macwire" %% "macros" % "2.5.7"
+val macwire = "com.softwaremill.macwire" %% "macros" % "2.6.4"
 val lombok  = "org.projectlombok"         % "lombok" % "1.18.34" % Provided
 val pekkoCluster = Seq(
   "org.apache.pekko" %% "pekko-cluster"       % PekkoVersion,
@@ -39,8 +39,8 @@ lazy val root = (project in file("."))
       "org.playframework" %% "play-guice" % playVersion % Test,
       macwire              % Test,
       // Test dependencies for running chrome driver
-      "io.github.bonigarcia"    % "webdrivermanager"       % "5.3.2" % Test,
-      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.9.1" % Test,
+      "io.github.bonigarcia"    % "webdrivermanager"       % "5.8.0"  % Test,
+      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.24.0" % Test,
       // Test framework dependencies
       "org.scalatest" %% "scalatest"       % "3.2.19" % Test,
       "com.novocode"   % "junit-interface" % "0.11"   % Test

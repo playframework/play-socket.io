@@ -14,7 +14,7 @@
 
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <encoder class="PatternLayoutEncoder">
-      <pattern>%highlight(%-5level) [node${node.id}] %date %logger{15} - %message%n%xException{10}</pattern>
+      <pattern>%highlight(%-5level) %date %logger{15} - %message%n%xException{10}</pattern>
     </encoder>
   </appender>
 

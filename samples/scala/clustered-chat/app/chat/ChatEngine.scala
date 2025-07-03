@@ -1,5 +1,6 @@
 package chat
 
+import org.apache.pekko.actor.ActorRef
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.cluster.pubsub.DistributedPubSub
 import org.apache.pekko.cluster.pubsub.DistributedPubSubMediator.Publish
@@ -50,13 +51,13 @@ object User {
 object ChatProtocol {
   import play.socketio.scaladsl.SocketIOEventCodec._
 
-  val decoder = decodeByName {
+  val decoder: SocketIOEventsDecoder[ChatEvent] = decodeByName {
     case "chat message" => decodeJson[ChatMessage]
     case "join room"    => decodeJson[JoinRoom]
     case "leave room"   => decodeJson[LeaveRoom]
   }
 
-  val encoder = encodeByType[ChatEvent] {
+  val encoder: SocketIOEventsEncoder[ChatEvent] = encodeByType[ChatEvent] {
     case _: ChatMessage => "chat message" -> encodeJson[ChatMessage]
     case _: JoinRoom    => "join room"    -> encodeJson[JoinRoom]
     case _: LeaveRoom   => "leave room"   -> encodeJson[LeaveRoom]
@@ -67,7 +68,7 @@ class ChatEngine(socketIO: SocketIO, system: ActorSystem)(implicit mat: Material
 
   import ChatProtocol._
 
-  val mediator = DistributedPubSub(system).mediator
+  val mediator: ActorRef = DistributedPubSub(system).mediator
 
   // This gets a chat room using Pekko distributed pubsub
   private def getChatRoom(user: User, room: String) = {

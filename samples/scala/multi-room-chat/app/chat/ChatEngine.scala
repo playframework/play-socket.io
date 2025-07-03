@@ -49,13 +49,13 @@ object ChatProtocol {
 
   import play.socketio.scaladsl.SocketIOEventCodec._
 
-  val decoder = decodeByName {
+  val decoder: SocketIOEventsDecoder[ChatEvent] = decodeByName {
     case "chat message" => decodeJson[ChatMessage]
     case "join room"    => decodeJson[JoinRoom]
     case "leave room"   => decodeJson[LeaveRoom]
   }
 
-  val encoder = encodeByType[ChatEvent] {
+  val encoder: SocketIOEventsEncoder[ChatEvent] = encodeByType[ChatEvent] {
     case _: ChatMessage => "chat message" -> encodeJson[ChatMessage]
     case _: JoinRoom    => "join room"    -> encodeJson[JoinRoom]
     case _: LeaveRoom   => "leave room"   -> encodeJson[LeaveRoom]
@@ -135,7 +135,7 @@ class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
   }
 
   val controller: EngineIOController = socketIO.builder
-    .onConnect { (request, sid) =>
+    .onConnect { (request, _) =>
       // Extract the username from the header
       val username = request.getQueryString("user").getOrElse {
         throw new RuntimeException("No user parameter")

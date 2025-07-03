@@ -155,11 +155,11 @@ class EngineIOSessionActor[SessionData](
     case Close(_, transport, requestId) =>
       debug(requestId, transport, "Requested to close session")
       context.stop(self)
-      sender ! Done
+      sender() ! Done
 
     case message: SessionMessage =>
       debug(message.requestId, message.transport, s"Unknown session id")
-      sender ! Status.Failure(UnknownSessionId(sid))
+      sender() ! Status.Failure(UnknownSessionId(sid))
       context.stop(self)
   }
 
@@ -172,9 +172,9 @@ class EngineIOSessionActor[SessionData](
           case e =>
             ConnectionRefused(e)
         }
-        .pipeTo(self)(sender)
+        .pipeTo(self)(sender())
     } catch {
-      case NonFatal(e) => self.tell(ConnectionRefused(e), sender)
+      case NonFatal(e) => self.tell(ConnectionRefused(e), sender())
     }
     context.become(connecting)
   }
@@ -185,7 +185,7 @@ class EngineIOSessionActor[SessionData](
 
     case Connected(flow, requestId) =>
       log.debug("{} - Connection successful", sid)
-      sender ! Packets(
+      sender() ! Packets(
         sid,
         activeTransport,
         Seq(
@@ -205,11 +205,11 @@ class EngineIOSessionActor[SessionData](
       doConnect(flow)
 
     case ConnectionRefused(e) =>
-      sender ! Status.Failure(e)
+      sender() ! Status.Failure(e)
 
     case Close(_, transport, requestId) =>
       debug(requestId, transport, "Requested to close session")
-      sender ! Done
+      sender() ! Done
       context.stop(self)
   }
 
@@ -239,8 +239,8 @@ class EngineIOSessionActor[SessionData](
       .expand(_.iterator)
       .via(flow)
       .batch(4, messagesToPackets)(_ ++ messagesToPackets(_))
-      .toMat(Sink.queue[Seq[EngineIOPacket]])(Keep.both)
-      .run
+      .toMat(Sink.queue[Seq[EngineIOPacket]]())(Keep.both)
+      .run()
 
     sourceQueue = sourceQ
     sinkQueue = sinkQ
@@ -266,26 +266,26 @@ class EngineIOSessionActor[SessionData](
             existingRequestId
           )
           existing ! Close(sid, transport, requestId)
-          storeRequester(sender, requestId, transport)
+          storeRequester(sender(), requestId, transport)
 
         case None if transport != activeTransport =>
           packetsToSendByNonActiveTransport.get(transport) match {
             case Some(packets) =>
               debug(requestId, transport, "Sending message to non active transport")
-              sender ! Packets(sid, transport, packets, requestId)
+              sender() ! Packets(sid, transport, packets, requestId)
             case None =>
               debug(requestId, transport, "Retrieve from non active transport, waiting")
-              storeRequester(sender, requestId, transport)
+              storeRequester(sender(), requestId, transport)
           }
 
         case None if packetsToSend.isEmpty =>
           debug(requestId, transport, "Retrieve while no packets, waiting")
-          storeRequester(sender, requestId, transport)
+          storeRequester(sender(), requestId, transport)
 
         case None =>
           // We have packets to send
           debug(requestId, transport, "Retrieve with {} packets to send", packetsToSend.length)
-          sender ! Packets(sid, transport, packetsToSend, requestId)
+          sender() ! Packets(sid, transport, packetsToSend, requestId)
           packetsToSend = Nil
           requestMorePackets()
       }
@@ -380,14 +380,14 @@ class EngineIOSessionActor[SessionData](
     if (messagesToPush.nonEmpty) {
       if (currentlyPushingMessages) {
         messagesReceived ++= messagesToPush
-        messagesReceivedSenders += sender
+        messagesReceivedSenders += sender()
       } else {
         sourceQueue.offer(messagesToPush).map(_ => MessagesPushed).pipeTo(self)
         currentlyPushingMessages = true
-        sender ! Done
+        sender() ! Done
       }
     } else {
-      sender ! Done
+      sender() ! Done
     }
   }
 
@@ -458,7 +458,7 @@ class EngineIOSessionActor[SessionData](
       debug(requestId, transport, "Telling poller to go away to work around engine.io upgrade race condition")
       requester ! Packets(sid, Polling, Seq(Utf8EngineIOPacket(EngineIOPacketType.Noop, "")), requestId)
     } else {
-      retrieveRequesters += (transport -> RetrieveRequester(sender, requestId))
+      retrieveRequesters += (transport -> RetrieveRequester(sender(), requestId))
     }
   }
 

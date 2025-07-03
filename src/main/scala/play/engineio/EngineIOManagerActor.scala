@@ -94,7 +94,7 @@ class EngineIOManagerActor(config: EngineIOConfig, sessionProps: Props) extends 
         case Some(sessionActor) =>
           sessionActor.tell(close, sender())
         case None =>
-          sender ! Done
+          sender() ! Done
       }
 
     case message: SessionMessage =>

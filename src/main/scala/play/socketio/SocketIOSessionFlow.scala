@@ -345,7 +345,7 @@ private class SocketIOSessionStage[SessionData](
                     namespace,
                     connectToNamespaceCallback.applyOrElse(
                       (session, ns),
-                      { _: (SocketIOSession[SessionData], String) => throw NamespaceNotFound(namespace) }
+                      { (_: (SocketIOSession[SessionData], String)) => throw NamespaceNotFound(namespace) }
                     )
                   )
               }

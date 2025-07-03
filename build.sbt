@@ -1,15 +1,15 @@
-import Dependencies.AkkaVersion
+import Dependencies.PekkoVersion
 import Dependencies.Scala212
 import Dependencies.Scala213
 import play.core.PlayVersion.{ current => playVersion }
 
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
 
-val macwire = "com.softwaremill.macwire" %% "macros" % "2.5.7"
-val lombok  = "org.projectlombok"         % "lombok" % "1.18.8" % Provided
-val akkaCluster = Seq(
-  "com.typesafe.akka" %% "akka-cluster"       % AkkaVersion,
-  "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion
+val macwire = "com.softwaremill.macwire" %% "macros" % "2.6.4"
+val lombok  = "org.projectlombok"         % "lombok" % "1.18.34" % Provided
+val pekkoCluster = Seq(
+  "org.apache.pekko" %% "pekko-cluster"       % PekkoVersion,
+  "org.apache.pekko" %% "pekko-cluster-tools" % PekkoVersion
 )
 
 // Customise sbt-dynver's behaviour to make it work with tags which aren't v-prefixed
@@ -20,7 +20,7 @@ val previousVersion: Option[String] = None
 
 lazy val root = (project in file("."))
   .settings(
-    organization := "com.typesafe.play",
+    organization := "org.playframework",
     name := "play-socket-io",
     mimaPreviousArtifacts := previousVersion.map(organization.value %% moduleName.value % _).toSet,
     scalaVersion := Scala213,
@@ -30,19 +30,19 @@ lazy val root = (project in file("."))
     javacOptions ++= Seq("-Xlint"),
     libraryDependencies ++= Seq(
       // Production dependencies
-      "com.typesafe.play" %% "play"        % playVersion,
-      "com.typesafe.akka" %% "akka-remote" % AkkaVersion,
+      "org.playframework" %% "play"        % playVersion,
+      "org.apache.pekko" %% "pekko-remote" % PekkoVersion,
       // Test dependencies for running a Play server
-      "com.typesafe.play" %% "play-akka-http-server" % playVersion % Test,
-      "com.typesafe.play" %% "play-logback"          % playVersion % Test,
+      "org.playframework" %% "play-pekko-http-server" % playVersion % Test,
+      "org.playframework" %% "play-logback"           % playVersion % Test,
       // Test dependencies for Scala/Java dependency injection
-      "com.typesafe.play" %% "play-guice" % playVersion % Test,
+      "org.playframework" %% "play-guice" % playVersion % Test,
       macwire              % Test,
       // Test dependencies for running chrome driver
-      "io.github.bonigarcia"    % "webdrivermanager"       % "5.3.2" % Test,
-      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.9.1" % Test,
+      "io.github.bonigarcia"    % "webdrivermanager"       % "5.8.0" % Test,
+      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.24.0" % Test,
       // Test framework dependencies
-      "org.scalatest" %% "scalatest"       % "3.1.2" % Test,
+      "org.scalatest" %% "scalatest"       % "3.2.19" % Test,
       "com.novocode"   % "junit-interface" % "0.11"  % Test
     ),
     (Compile / PB.targets) := Seq(
@@ -63,7 +63,6 @@ lazy val root = (project in file("."))
       (Test / test).value
       runChromeWebDriver.value
     },
-    resolvers += "jitpack".at("https://jitpack.io"),
     headerLicense := Some(
       HeaderLicense.Custom(
         "Copyright (C) from 2022 The Play Framework Contributors <https://github.com/playframework>, 2011-2021 Lightbend Inc. <https://www.lightbend.com>"
@@ -77,7 +76,7 @@ lazy val scalaChat = (project in file("samples/scala/chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-scala-chat-example",
-    organization := "com.typesafe.play",
+    organization := "org.playframework",
     scalaVersion := Scala213,
     libraryDependencies += macwire % Provided
   )
@@ -87,7 +86,7 @@ lazy val scalaMultiRoomChat = (project in file("samples/scala/multi-room-chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-scala-multi-room-chat-example",
-    organization := "com.typesafe.play",
+    organization := "org.playframework",
     scalaVersion := Scala213,
     libraryDependencies += macwire % Provided
   )
@@ -97,9 +96,9 @@ lazy val scalaClusteredChat = (project in file("samples/scala/clustered-chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-scala-clustered-chat-example",
-    organization := "com.typesafe.play",
+    organization := "org.playframework",
     scalaVersion := Scala213,
-    libraryDependencies ++= Seq(macwire % Provided) ++ akkaCluster
+    libraryDependencies ++= Seq(macwire % Provided) ++ pekkoCluster
   )
 
 lazy val javaChat = (project in file("samples/java/chat"))
@@ -107,7 +106,7 @@ lazy val javaChat = (project in file("samples/java/chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-java-chat-example",
-    organization := "com.typesafe.play",
+    organization := "org.playframework",
     scalaVersion := Scala213,
     libraryDependencies += guice
   )
@@ -117,7 +116,7 @@ lazy val javaMultiRoomChat = (project in file("samples/java/multi-room-chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-java-multi-room-chat-example",
-    organization := "com.typesafe.play",
+    organization := "org.playframework",
     scalaVersion := Scala213,
     libraryDependencies ++= Seq(guice, lombok)
   )
@@ -127,9 +126,9 @@ lazy val javaClusteredChat = (project in file("samples/java/clustered-chat"))
   .dependsOn(root)
   .settings(
     name := "play-socket.io-java-clustered-chat-example",
-    organization := "com.typesafe.play",
+    organization := "org.playframework",
     scalaVersion := Scala213,
-    libraryDependencies ++= Seq(guice, lombok) ++ akkaCluster
+    libraryDependencies ++= Seq(guice, lombok) ++ pekkoCluster
   )
 
 addCommandAlias(

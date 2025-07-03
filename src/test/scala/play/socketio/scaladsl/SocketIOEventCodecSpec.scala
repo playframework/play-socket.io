@@ -3,22 +3,22 @@
  */
 package play.socketio.scaladsl
 
-import akka.util.ByteString
+import org.apache.pekko.util.ByteString
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.OptionValues
 import play.api.libs.json.JsString
 import play.api.libs.json.JsValue
 import play.socketio.SocketIOEvent
 import play.socketio.SocketIOEventAck
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 
 class SocketIOEventCodecSpec extends AnyWordSpec with Matchers with OptionValues {
 
   import play.socketio.scaladsl.SocketIOEventCodec._
 
   private class CapturingAck extends SocketIOEventAck {
-    var args: Option[Seq[Either[JsValue, ByteString]]]         = None
-    override def apply(args: Seq[Either[JsValue, ByteString]]) = this.args = Some(args)
+    var args: Option[Seq[Either[JsValue, ByteString]]]               = None
+    override def apply(args: Seq[Either[JsValue, ByteString]]): Unit = this.args = Some(args)
   }
 
   def decodeStringArgs[T](

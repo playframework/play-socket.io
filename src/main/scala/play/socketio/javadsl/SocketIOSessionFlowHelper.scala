@@ -3,26 +3,27 @@
  */
 package play.socketio.javadsl
 
-import java.util.Optional
 import java.util.concurrent.CompletionStage
 import java.util.function.BiFunction
 import java.util.function.Function
+import java.util.Optional
 
-import akka.NotUsed
-import akka.stream.Materializer
-import akka.stream.javadsl.Flow
+import scala.concurrent.ExecutionContext
+import scala.jdk.FutureConverters.CompletionStageOps
+import scala.jdk.OptionConverters.RichOptional
+import scala.Function.unlift
+
 import com.fasterxml.jackson.databind.JsonNode
+import org.apache.pekko.stream.javadsl.Flow
+import org.apache.pekko.stream.Materializer
+import org.apache.pekko.NotUsed
 import play.api.libs.json.Json
+import play.engineio.EngineIOSessionHandler
 import play.mvc.Http.RequestHeader
 import play.socketio.SocketIOConfig
 import play.socketio.SocketIOEvent
 import play.socketio.SocketIOSession
 import play.socketio.SocketIOSessionFlow
-
-import scala.concurrent.ExecutionContext
-import scala.Function.unlift
-import scala.compat.java8.FutureConverters._
-import scala.compat.java8.OptionConverters._
 
 /**
  * Helps with mapping Java types to Scala types, which is much easier to do in Scala than Java.
@@ -37,14 +38,15 @@ private[javadsl] object SocketIOSessionFlowHelper {
       connectToNamespaceCallback: BiFunction[SocketIOSession[SessionData], String, Optional[
         Flow[SocketIOEvent, SocketIOEvent, NotUsed]
       ]]
-  )(implicit ec: ExecutionContext, mat: Materializer) = {
+  )(implicit ec: ExecutionContext, mat: Materializer): EngineIOSessionHandler = {
     SocketIOSessionFlow.createEngineIOSessionHandler[SessionData](
       config,
-      (request, sid) => connectCallback(request.asJava, sid).toScala,
-      unlift(t => errorHandler(t).asScala.map(Json.toJson(_))),
+      (request, sid) => connectCallback(request.asJava, sid).asScala,
+      unlift(t => errorHandler(t).toScala.map(Json.toJson(_))),
       session => defaultNamespaceCallback(session).asScala,
-      unlift { case (session, sid) =>
-        connectToNamespaceCallback(session, sid).asScala.map(_.asScala)
+      unlift {
+        case (session, sid) =>
+          connectToNamespaceCallback(session, sid).asScala.map(_.asScala)
       }
     )
   }

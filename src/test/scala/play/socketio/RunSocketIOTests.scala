@@ -3,21 +3,21 @@
  */
 package play.socketio
 
-import io.github.bonigarcia.wdm.WebDriverManager
-import play.core.server.ServerConfig
-
 import java.util
+
+import scala.jdk.CollectionConverters._
+
+import io.github.bonigarcia.wdm.WebDriverManager
 import org.openqa.selenium.chrome.ChromeDriver
 import org.openqa.selenium.chrome.ChromeDriverService
 import org.openqa.selenium.chrome.ChromeOptions
 import play.api.Environment
 import play.api.LoggerConfigurator
+import play.core.server.ServerConfig
 import play.socketio.javadsl.TestSocketIOJavaApplication
 import play.socketio.scaladsl.TestMultiNodeSocketIOApplication
 import play.socketio.scaladsl.TestSocketIOScalaApplication
 import play.utils.Colors
-
-import scala.collection.JavaConverters._
 
 object RunSocketIOTests extends App {
 
@@ -37,9 +37,7 @@ object RunSocketIOTests extends App {
   val chromeDriverService: ChromeDriverService = ChromeDriverService.createDefaultService()
   val driver                                   = new ChromeDriver(chromeDriverService, chromeOptions)
 
-  Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
-    def run(): Unit = driver.quit()
-  }))
+  Runtime.getRuntime.addShutdownHook(new Thread(() => driver.quit()))
 
   val passed =
     try {
@@ -85,9 +83,9 @@ object RunSocketIOTests extends App {
     def consume(driver: ChromeDriver, start: Long): Unit = {
       var end = false
       driver.executeScript("return consumeMochaEvents();") match {
-        case list: util.List[_] =>
+        case list: util.List[?] =>
           list.asScala.foreach {
-            case map: util.Map[String, _] @unchecked =>
+            case map: util.Map[String, ?] @unchecked =>
               val obj = map.asScala
               obj.get("name") match {
                 case Some("suite") =>
@@ -127,7 +125,7 @@ object RunSocketIOTests extends App {
     failCount == 0
   }
 
-  def withCloseable[T](closeable: T)(close: T => Unit)(block: T => Unit) =
+  def withCloseable[T](closeable: T)(close: T => Unit)(block: T => Unit): Unit =
     try {
       block(closeable)
     } finally {

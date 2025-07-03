@@ -3,22 +3,22 @@
  */
 package play.engineio
 
-import akka.actor.Actor
-import akka.actor.ActorLogging
-import akka.actor.ActorRef
-import akka.actor.DeadLetterSuppression
-import akka.actor.Props
-import akka.actor.Status
-import akka.pattern.pipe
-import akka.stream._
-import akka.stream.scaladsl._
-import akka.Done
-import akka.NotUsed
-import play.api.mvc.RequestHeader
-import play.engineio.protocol.EngineIOTransport.Polling
-import play.engineio.protocol._
-
 import scala.util.control.NonFatal
+
+import org.apache.pekko.actor.Actor
+import org.apache.pekko.actor.ActorLogging
+import org.apache.pekko.actor.ActorRef
+import org.apache.pekko.actor.DeadLetterSuppression
+import org.apache.pekko.actor.Props
+import org.apache.pekko.actor.Status
+import org.apache.pekko.pattern.pipe
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl._
+import org.apache.pekko.Done
+import org.apache.pekko.NotUsed
+import play.api.mvc.RequestHeader
+import play.engineio.protocol._
+import play.engineio.protocol.EngineIOTransport.Polling
 
 /**
  * Actor that provides engine.io sessions.
@@ -55,8 +55,7 @@ object EngineIOSessionActor {
   def props[SessionData](
       config: EngineIOConfig,
       handler: EngineIOSessionHandler
-  )(implicit mat: Materializer) = Props {
-
+  )(implicit mat: Materializer): Props = Props {
     new EngineIOSessionActor[SessionData](config, handler)
   }
 }
@@ -121,11 +120,13 @@ class EngineIOSessionActor[SessionData](
   import EngineIOManagerActor._
   import EngineIOSessionActor._
 
-  private val sessionTick = context.system.scheduler.schedule(config.pingInterval, config.pingInterval, self, Tick)
+  private val sessionTick =
+    context.system.scheduler.scheduleAtFixedRate(config.pingInterval, config.pingInterval, self, Tick)
 
-  override def postStop() = {
-    retrieveRequesters.foreach { case (transport, (RetrieveRequester(requester, requestId))) =>
-      requester ! Close(sid, transport, requestId)
+  override def postStop(): Unit = {
+    retrieveRequesters.foreach {
+      case (transport, RetrieveRequester(requester, requestId)) =>
+        requester ! Close(sid, transport, requestId)
     }
     messagesReceivedSenders.foreach { messageSender => messageSender ! Status.Failure(SessionClosed) }
 
@@ -140,7 +141,7 @@ class EngineIOSessionActor[SessionData](
     log.debug("{} - Session terminated", sid)
   }
 
-  override def receive = notYetConnected
+  override def receive: Receive = notYetConnected
 
   private def notYetConnected: Receive = {
     case Tick =>
@@ -162,13 +163,14 @@ class EngineIOSessionActor[SessionData](
       context.stop(self)
   }
 
-  def tryConnect(sid: String, request: RequestHeader, requestId: String) = {
+  def tryConnect(sid: String, request: RequestHeader, requestId: String): Unit = {
     try {
       handler
         .onConnect(request, sid)
         .map(flow => Connected(flow, requestId))
-        .recover { case e =>
-          ConnectionRefused(e)
+        .recover {
+          case e =>
+            ConnectionRefused(e)
         }
         .pipeTo(self)(sender)
     } catch {
@@ -336,7 +338,7 @@ class EngineIOSessionActor[SessionData](
       transport: EngineIOTransport,
       packets: Seq[EngineIOPacket],
       requestId: String
-  ) = {
+  ): Unit = {
     var messagesToPush = Seq.empty[EngineIOMessage]
 
     packets.foreach { packet =>
@@ -389,7 +391,7 @@ class EngineIOSessionActor[SessionData](
     }
   }
 
-  private def handlePing(transport: EngineIOTransport, requestId: String, data: String) = {
+  private def handlePing(transport: EngineIOTransport, requestId: String, data: String): Unit = {
     if (data == "probe" && activeTransport == Polling) {
       upgradingFromPollingHack = true
       retrieveRequesters.get(Polling).foreach { requester =>
@@ -407,7 +409,7 @@ class EngineIOSessionActor[SessionData](
     sendPackets(Seq(Utf8EngineIOPacket(EngineIOPacketType.Pong, data)), transport)
   }
 
-  private def handleUpgrade(transport: EngineIOTransport, requestId: String) = {
+  private def handleUpgrade(transport: EngineIOTransport, requestId: String): Unit = {
     upgradingFromPollingHack = false
     debug(requestId, transport, "Upgrading from {}", activeTransport)
     activeTransport = transport
@@ -424,7 +426,7 @@ class EngineIOSessionActor[SessionData](
     }
   }
 
-  private def requestMorePackets() = {
+  private def requestMorePackets(): Unit = {
     if (!currentlyPullingPackets) {
       sinkQueue
         .pull()
@@ -437,7 +439,7 @@ class EngineIOSessionActor[SessionData](
     }
   }
 
-  private def sendPackets(packets: Seq[EngineIOPacket], transport: EngineIOTransport = activeTransport) = {
+  private def sendPackets(packets: Seq[EngineIOPacket], transport: EngineIOTransport = activeTransport): Unit = {
     retrieveRequesters.get(transport) match {
       case Some(RetrieveRequester(requester, requestId)) =>
         debug(requestId, transport, "Sending {} packets direct", packets.size)
@@ -450,7 +452,7 @@ class EngineIOSessionActor[SessionData](
     }
   }
 
-  private def storeRequester(requester: ActorRef, requestId: String, transport: EngineIOTransport) = {
+  private def storeRequester(requester: ActorRef, requestId: String, transport: EngineIOTransport): Unit = {
     if (upgradingFromPollingHack && transport == Polling) {
       // Don't store, tell it to go away
       debug(requestId, transport, "Telling poller to go away to work around engine.io upgrade race condition")

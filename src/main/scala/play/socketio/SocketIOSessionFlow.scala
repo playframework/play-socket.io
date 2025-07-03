@@ -3,28 +3,28 @@
  */
 package play.socketio
 
-import akka.NotUsed
-import akka.stream._
-import akka.stream.scaladsl.BidiFlow
-import akka.stream.scaladsl.BroadcastHub
-import akka.stream.scaladsl.Flow
-import akka.stream.scaladsl.Keep
-import akka.stream.scaladsl.MergeHub
-import akka.stream.scaladsl.Sink
-import akka.stream.scaladsl.Source
-import akka.stream.stage._
-import akka.util.ByteString
+import scala.concurrent.duration.Deadline
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
+import scala.util.control.NonFatal
+
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl.BidiFlow
+import org.apache.pekko.stream.scaladsl.BroadcastHub
+import org.apache.pekko.stream.scaladsl.Flow
+import org.apache.pekko.stream.scaladsl.Keep
+import org.apache.pekko.stream.scaladsl.MergeHub
+import org.apache.pekko.stream.scaladsl.Sink
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.stream.stage._
+import org.apache.pekko.util.ByteString
+import org.apache.pekko.NotUsed
 import play.api.libs.json.JsString
 import play.api.libs.json.JsValue
 import play.api.libs.json.Json
 import play.api.mvc.RequestHeader
 import play.engineio._
 import play.socketio.protocol._
-
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
-import scala.concurrent.duration.Deadline
-import scala.util.control.NonFatal
 
 /**
  * Utility to handle engine.io sessions as socket.io sessions.
@@ -44,42 +44,39 @@ object SocketIOSessionFlow {
       config: SocketIOConfig,
       connectCallback: (RequestHeader, String) => Future[SessionData],
       errorHandler: PartialFunction[Throwable, JsValue],
-      defaultNamespaceCallback: SocketIOSession[SessionData] => Flow[SocketIOEvent, SocketIOEvent, _],
+      defaultNamespaceCallback: SocketIOSession[SessionData] => Flow[SocketIOEvent, SocketIOEvent, ?],
       connectToNamespaceCallback: PartialFunction[
         (SocketIOSession[SessionData], String),
-        Flow[SocketIOEvent, SocketIOEvent, _]
+        Flow[SocketIOEvent, SocketIOEvent, ?]
       ]
-  )(implicit ec: ExecutionContext, mat: Materializer): EngineIOSessionHandler = {
+  )(implicit ec: ExecutionContext, mat: Materializer): EngineIOSessionHandler = (request: RequestHeader, sid: String) =>
+    {
+      connectCallback(request, sid).map { sessionData =>
+        val session = SocketIOSession(sid, sessionData)
 
-    new EngineIOSessionHandler {
-      override def onConnect(request: RequestHeader, sid: String) = {
-        connectCallback(request, sid).map { sessionData =>
-          val session = SocketIOSession(sid, sessionData)
+        val stage = new SocketIOSessionStage[SessionData](
+          config,
+          session,
+          errorHandler,
+          defaultNamespaceCallback,
+          connectToNamespaceCallback
+        )
 
-          val stage = new SocketIOSessionStage[SessionData](
-            config,
-            session,
-            errorHandler,
-            defaultNamespaceCallback,
-            connectToNamespaceCallback
-          )
-
-          BidiFlow
-            .fromGraph(stage)
-            .joinMat(
-              Flow.fromSinkAndSourceMat(
-                BroadcastHub.sink[NamespacedSocketIOMessage],
-                MergeHub.source[NamespacedSocketIOMessage]
-              )(Keep.both)
-            ) { case (receiver, (broadcastSource, mergeSink)) =>
+        BidiFlow
+          .fromGraph(stage)
+          .joinMat(
+            Flow.fromSinkAndSourceMat(
+              BroadcastHub.sink[NamespacedSocketIOMessage],
+              MergeHub.source[NamespacedSocketIOMessage]
+            )(Keep.both)
+          ) {
+            case (receiver, (broadcastSource, mergeSink)) =>
               val demuxMuxer = new NamespaceDemuxMuxer(broadcastSource, mergeSink)
               receiver.provideNamespaceDemuxMuxer(demuxMuxer)
               NotUsed
-            }
-        }
+          }
       }
     }
-  }
 }
 
 /**
@@ -111,24 +108,27 @@ private class SocketIOSessionStage[SessionData](
     config: SocketIOConfig,
     session: SocketIOSession[SessionData],
     errorHandler: PartialFunction[Throwable, JsValue],
-    defaultNamespaceCallback: SocketIOSession[SessionData] => Flow[SocketIOEvent, SocketIOEvent, _],
+    defaultNamespaceCallback: SocketIOSession[SessionData] => Flow[SocketIOEvent, SocketIOEvent, ?],
     connectToNamespaceCallback: PartialFunction[
       (SocketIOSession[SessionData], String),
-      Flow[SocketIOEvent, SocketIOEvent, _]
+      Flow[SocketIOEvent, SocketIOEvent, ?]
     ]
 ) extends GraphStageWithMaterializedValue[
       BidiShape[EngineIOMessage, NamespacedSocketIOMessage, NamespacedSocketIOMessage, Seq[EngineIOMessage]],
       DemuxMuxReceiver
     ] {
 
-  val engineIOIn  = Inlet[EngineIOMessage]("EngineIOIn")
-  val socketIOOut = Outlet[NamespacedSocketIOMessage]("SocketIOOut")
-  val socketIOIn  = Inlet[NamespacedSocketIOMessage]("SocketIOIn")
-  val engineIOOut = Outlet[Seq[EngineIOMessage]]("EngineIOOut")
+  val engineIOIn: Inlet[EngineIOMessage]             = Inlet[EngineIOMessage]("EngineIOIn")
+  val socketIOOut: Outlet[NamespacedSocketIOMessage] = Outlet[NamespacedSocketIOMessage]("SocketIOOut")
+  val socketIOIn: Inlet[NamespacedSocketIOMessage]   = Inlet[NamespacedSocketIOMessage]("SocketIOIn")
+  val engineIOOut: Outlet[Seq[EngineIOMessage]]      = Outlet[Seq[EngineIOMessage]]("EngineIOOut")
 
-  override def shape = BidiShape(engineIOIn, socketIOOut, socketIOIn, engineIOOut)
-  override def createLogicAndMaterializedValue(inheritedAttributes: Attributes) = {
-    val logic = new GraphStageLogic(shape) with DemuxMuxReceiver {
+  override def shape
+      : BidiShape[EngineIOMessage, NamespacedSocketIOMessage, NamespacedSocketIOMessage, Seq[EngineIOMessage]] =
+    BidiShape(engineIOIn, socketIOOut, socketIOIn, engineIOOut)
+
+  override def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, DemuxMuxReceiver) = {
+    val logic: GraphStageLogic with DemuxMuxReceiver = new GraphStageLogic(shape) with DemuxMuxReceiver {
 
       var demuxMuxer: NamespaceDemuxMuxer = _
 
@@ -141,7 +141,7 @@ private class SocketIOSessionStage[SessionData](
       val socketIOHandler = new SocketIOHandler
       setHandlers(socketIOIn, socketIOOut, socketIOHandler)
 
-      override def preStart() = {
+      override def preStart(): Unit = {
         // Check that we have a demuxMuxer
         if (demuxMuxer == null) {
           throw new IllegalStateException("Flow started before the NamespaceDemuxMuxer was provided")
@@ -154,7 +154,7 @@ private class SocketIOSessionStage[SessionData](
       import SocketIOSessionException._
 
       // Callback used to push messages directly to engine.io, used for acks
-      val packetCallback = getAsyncCallback[SocketIOPacket](pushSocketIOPacket)
+      val packetCallback: AsyncCallback[SocketIOPacket] = getAsyncCallback[SocketIOPacket](pushSocketIOPacket)
 
       // Buffer for outgoing engine.io messages. Needed because we are merging two sources,
       // plus acks can come in at any time and need to be added to the buffer.
@@ -162,9 +162,9 @@ private class SocketIOSessionStage[SessionData](
 
       // Binary packet tracking, since a binary socket.io packet gets fragmented across many
       // engine.io packets
-      var currentBinaryPacket: Option[SocketIOPacket] = None
-      var currentBinaryPacketFragments                = IndexedSeq.empty[ByteString]
-      var currentBinaryPacketRemaining                = 0
+      var currentBinaryPacket: Option[SocketIOPacket]          = None
+      var currentBinaryPacketFragments: IndexedSeq[ByteString] = IndexedSeq.empty[ByteString]
+      var currentBinaryPacketRemaining                         = 0
 
       // The active namespaces
       var activeNamespaces = Set.empty[Option[String]]
@@ -179,7 +179,7 @@ private class SocketIOSessionStage[SessionData](
       private var ackFunctions: Map[Long, (Deadline, SocketIOEventAck)] = Map.empty
 
       class EngineIOHandler extends InHandler with OutHandler {
-        override def onPush() = {
+        override def onPush(): Unit = {
           (grab(engineIOIn), currentBinaryPacket) match {
 
             // handle unexpected binary/text messages first
@@ -249,7 +249,7 @@ private class SocketIOSessionStage[SessionData](
           }
         }
 
-        override def onPull() = {
+        override def onPull(): Unit = {
           if (engineIOBuffer.nonEmpty) {
             push(engineIOOut, engineIOBuffer)
             engineIOBuffer = Nil
@@ -264,7 +264,7 @@ private class SocketIOSessionStage[SessionData](
           }
         }
 
-        override def onUpstreamFinish() = {
+        override def onUpstreamFinish(): Unit = {
           complete(socketIOOut)
           cancel(socketIOIn)
           if (engineIOBuffer.isEmpty) {
@@ -272,14 +272,14 @@ private class SocketIOSessionStage[SessionData](
           }
         }
 
-        override def onUpstreamFailure(ex: Throwable) = {
+        override def onUpstreamFailure(ex: Throwable): Unit = {
           fail(socketIOOut, ex)
           cancel(socketIOIn)
         }
       }
 
       class SocketIOHandler extends InHandler with OutHandler {
-        override def onPush() = {
+        override def onPush(): Unit = {
           grab(socketIOIn) match {
 
             case DisconnectSocketIONamespace(namespace, error) =>
@@ -303,8 +303,9 @@ private class SocketIOSessionStage[SessionData](
               }
 
               val packet = if (event.arguments.forall(_.isLeft)) {
-                val data = JsString(event.name) +: event.arguments.collect { case Left(arg) =>
-                  arg
+                val data = JsString(event.name) +: event.arguments.collect {
+                  case Left(arg) =>
+                    arg
                 }
                 SocketIOEventPacket(namespace, data, maybeAckId)
               } else {
@@ -314,13 +315,13 @@ private class SocketIOSessionStage[SessionData](
           }
         }
 
-        override def onPull() = {
+        override def onPull(): Unit = {
           if (isAvailable(engineIOOut)) {
             pull(engineIOIn)
           }
         }
 
-        override def onDownstreamFinish() = {
+        override def onDownstreamFinish(): Unit = {
           // Cancel the ins so we can't get any more events
           cancel(engineIOIn)
           cancel(socketIOIn)
@@ -419,7 +420,7 @@ private class SocketIOSessionStage[SessionData](
           }
       }
 
-      def validateNamespace(namespace: Option[String])(block: => Unit) = {
+      def validateNamespace(namespace: Option[String])(block: => Unit): Unit = {
         if (!activeNamespaces(namespace)) {
           pushError(namespace, NamespaceNotConnected(namespace))
         } else {
@@ -427,29 +428,30 @@ private class SocketIOSessionStage[SessionData](
         }
       }
 
-      def connectNamespace(namespace: Option[String], flow: Flow[SocketIOEvent, SocketIOEvent, _]) = {
+      def connectNamespace(namespace: Option[String], flow: Flow[SocketIOEvent, SocketIOEvent, ?]): Unit = {
         activeNamespaces += namespace
         demuxMuxer.addNamespace(namespace, flow)
         pushSocketIOPacket(SocketIOConnectPacket(namespace))
       }
 
-      def maybePull(in: Inlet[_]) = {
+      def maybePull(in: Inlet[?]): Unit = {
         if (!hasBeenPulled(in)) {
           pull(in)
         }
       }
 
       def cleanupAcks(): Unit = {
-        ackFunctions = ackFunctions.filterNot { case (_, (deadline, _)) =>
-          deadline.isOverdue()
+        ackFunctions = ackFunctions.filterNot {
+          case (_, (deadline, _)) =>
+            deadline.isOverdue()
         }
       }
 
-      def pushError(namespace: Option[String], error: Throwable) = {
+      def pushError(namespace: Option[String], error: Throwable): Unit = {
         pushSocketIOPacket(SocketIOErrorPacket(namespace, errorHandler(error)))
       }
 
-      def pushSocketIOPacket(packet: SocketIOPacket) = {
+      def pushSocketIOPacket(packet: SocketIOPacket): Unit = {
         engineIOBuffer ++= SocketIOPacket.encode(packet)
         if (isAvailable(engineIOOut)) {
           push(engineIOOut, engineIOBuffer)
@@ -471,7 +473,7 @@ private class NamespaceDemuxMuxer(
     mergeSink: Sink[NamespacedSocketIOMessage, NotUsed]
 )(implicit materializer: Materializer) {
 
-  def addNamespace(namespace: Option[String], flow: Flow[SocketIOEvent, SocketIOEvent, _]): Unit = {
+  def addNamespace(namespace: Option[String], flow: Flow[SocketIOEvent, SocketIOEvent, ?]): Unit = {
     broadcastSource
       // Demux to only handle events for this namespace
       .filter(_.namespace == namespace)
@@ -483,8 +485,9 @@ private class NamespaceDemuxMuxer(
         case _ => false
       }
       // Remove the namespace
-      .collect { case NamespacedSocketIOEvent(_, event) =>
-        event
+      .collect {
+        case NamespacedSocketIOEvent(_, event) =>
+          event
       }
       // And send through the namespace flow
       .via(flow)
@@ -493,8 +496,9 @@ private class NamespaceDemuxMuxer(
       // Append a disconnect message to the output
       .concat(Source.single(DisconnectSocketIONamespace(namespace, None)))
       // And if there's an error, translate it to a disconnect message
-      .recover { case e =>
-        DisconnectSocketIONamespace(namespace, Some(e))
+      .recover {
+        case e =>
+          DisconnectSocketIONamespace(namespace, Some(e))
       }
       // And feed it into the muxer
       .runWith(mergeSink)
@@ -525,8 +529,9 @@ private class FlowCallbackAck(callback: SocketIOPacket => Unit, namespace: Optio
       callback(
         SocketIOAckPacket(
           namespace,
-          args.collect { case Left(jsValue) =>
-            jsValue
+          args.collect {
+            case Left(jsValue) =>
+              jsValue
           },
           id
         )

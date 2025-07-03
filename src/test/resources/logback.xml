@@ -33,10 +33,10 @@
 
   <logger name="play" level="INFO"/>
   <logger name="application" level="DEBUG"/>
-  <logger name="akka" level="INFO"/>
+  <logger name="org.apache.pekko" level="INFO"/>
 
   <!-- Uncomment to debug remote communication -->
-  <!-- <logger name="akka.remote" level="DEBUG" /> -->
+  <!-- <logger name="org.apache.pekko.remote" level="DEBUG" /> -->
 
   <!-- Off these ones as they are annoying, and anyway we manage configuration ourselves -->
   <logger name="com.avaje.ebean.config.PropertyMapLoader" level="OFF"/>

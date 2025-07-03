@@ -3,12 +3,12 @@
  */
 package play.engineio
 
-import akka.NotUsed
-import akka.stream.scaladsl.Flow
-import akka.util.ByteString
-import play.api.mvc.RequestHeader
-
 import scala.concurrent.Future
+
+import org.apache.pekko.stream.scaladsl.Flow
+import org.apache.pekko.util.ByteString
+import org.apache.pekko.NotUsed
+import play.api.mvc.RequestHeader
 
 /**
  * A handler for engine.io sessions.

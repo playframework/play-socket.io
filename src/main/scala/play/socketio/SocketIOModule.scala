@@ -3,15 +3,16 @@
  */
 package play.socketio
 
+import play.api.inject.Binding
+import play.api.inject.Module
 import play.api.Configuration
 import play.api.Environment
-import play.api.inject.Module
 
 /**
  * Module for providing both scaladsl and javadsl socket.io components to Play's runtime dependency injection system.
  */
 class SocketIOModule extends Module {
-  override def bindings(environment: Environment, configuration: Configuration) = Seq(
+  override def bindings(environment: Environment, configuration: Configuration): Seq[Binding[?]] = Seq(
     bind[SocketIOConfig].toProvider[SocketIOConfigProvider],
     bind[scaladsl.SocketIO].toSelf,
     bind[javadsl.SocketIO].toSelf

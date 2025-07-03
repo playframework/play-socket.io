@@ -19,9 +19,9 @@ This is the Play backend socket.io support.
 ## Features
 
 * Supports all socket.io features, including polling and WebSocket transports, multiple namespaces, acks, JSON and binary messages.
-* Uses Akka streams to handle namespaces.
+* Uses Pekko streams to handle namespaces.
 * Supports end to end back pressure, pushing back on the TCP connection for clients that send messages faster than the server can handle them.
-* In-built multi node support via Akka clustering, no need to use sticky load balancing.
+* In-built multi node support via Pekko clustering, no need to use sticky load balancing.
 * Straight forward codec DSL for translating socket.io callback messages to high level streamed message types.
 
 ## Documentation

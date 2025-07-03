@@ -3,14 +3,14 @@
  */
 package play.socketio.protocol
 
-import akka.util.ByteString
+import scala.collection.immutable
+
+import org.apache.pekko.util.ByteString
 import play.api.libs.json._
 import play.engineio.protocol._
 import play.engineio.BinaryEngineIOMessage
 import play.engineio.EngineIOMessage
 import play.engineio.TextEngineIOMessage
-
-import scala.collection.immutable
 
 /**
  * A socket.io packet type.

@@ -6,12 +6,12 @@ wd=$(pwd)
 startNode() {
   node=$1
   target/universal/stage/bin/play-socket-io-scala-clustered-chat-example \
-    -Dhttp.port=900$node -Dakka.remote.netty.tcp.port=255$node \
+    -Dhttp.port=900$node -Dpekko.remote.netty.tcp.port=255$node \
     -Dpidfile.path=$wd/target/node$node.pid \
     -Dnode.id=$1 \
-    -Dakka.cluster.seed-nodes.0=akka.tcp://application@127.0.0.1:2551 \
-    -Dakka.cluster.seed-nodes.1=akka.tcp://application@127.0.0.1:2552 \
-    -Dakka.cluster.seed-nodes.2=akka.tcp://application@127.0.0.1:2553 \
+    -Dpekko.cluster.seed-nodes.0=pekko.tcp://application@127.0.0.1:2551 \
+    -Dpekko.cluster.seed-nodes.1=pekko.tcp://application@127.0.0.1:2552 \
+    -Dpekko.cluster.seed-nodes.2=pekko.tcp://application@127.0.0.1:2553 \
      &
 }
 

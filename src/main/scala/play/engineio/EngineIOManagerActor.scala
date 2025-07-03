@@ -3,10 +3,10 @@
  */
 package play.engineio
 
-import akka.Done
-import akka.actor.Actor
-import akka.actor.Props
-import akka.routing.ConsistentHashingRouter.ConsistentHashable
+import org.apache.pekko.actor.Actor
+import org.apache.pekko.actor.Props
+import org.apache.pekko.routing.ConsistentHashingRouter.ConsistentHashable
+import org.apache.pekko.Done
 import play.api.mvc.RequestHeader
 import play.engineio.protocol.EngineIOPacket
 import play.engineio.protocol.EngineIOTransport
@@ -14,7 +14,7 @@ import play.engineio.protocol.EngineIOTransport
 /**
  * The actor responsible for managing all engine.io sessions for this node.
  *
- * The messages sent to/from this actor potentially go through Akka remoting, and so must have serializers configured
+ * The messages sent to/from this actor potentially go through Pekko remoting, and so must have serializers configured
  * accordingly.
  */
 object EngineIOManagerActor {
@@ -40,7 +40,7 @@ object EngineIOManagerActor {
      */
     val requestId: String
 
-    override def consistentHashKey = sid
+    override def consistentHashKey: String = sid
   }
 
   /**
@@ -65,7 +65,7 @@ object EngineIOManagerActor {
    */
   case class Close(sid: String, transport: EngineIOTransport, requestId: String) extends SessionMessage
 
-  def props(config: EngineIOConfig, sessionProps: Props) = Props {
+  def props(config: EngineIOConfig, sessionProps: Props): Props = Props {
     new EngineIOManagerActor(config, sessionProps)
   }
 }
@@ -77,7 +77,7 @@ class EngineIOManagerActor(config: EngineIOConfig, sessionProps: Props) extends 
 
   import EngineIOManagerActor._
 
-  override def receive = {
+  override def receive: Receive = {
     case connect: Connect =>
       context.child(connect.sid) match {
         case Some(sessionActor) =>

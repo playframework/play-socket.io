@@ -3,9 +3,8 @@
  */
 package play.socketio
 
-import akka.util.ByteString
+import org.apache.pekko.util.ByteString
 import play.api.libs.json.JsValue
-import scala.util.Either
 
 /**
  * A socket.io ack function.

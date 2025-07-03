@@ -1,6 +1,6 @@
 import Dependencies.PekkoVersion
-import Dependencies.Scala212
 import Dependencies.Scala213
+import Dependencies.Scala3
 import play.core.PlayVersion.{ current => playVersion }
 
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
@@ -24,7 +24,7 @@ lazy val root = (project in file("."))
     name := "play-socket-io",
     mimaPreviousArtifacts := previousVersion.map(organization.value %% moduleName.value % _).toSet,
     scalaVersion := Scala213,
-    crossScalaVersions := Seq(Scala213, Scala212),
+    crossScalaVersions := Seq(Scala213, Scala3),
     scalacOptions ++= Seq("-feature", "-release", "11"),
     (Compile / doc / scalacOptions) := Nil,
     javacOptions ++= Seq("-Xlint"),

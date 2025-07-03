@@ -31,7 +31,7 @@ public class ChatEngine implements Provider<EngineIOController> {
     // We use a MergeHub to merge all the incoming chat messages from all the
     // connected users into one flow, and we feed that straight into a
     // BroadcastHub to broadcast them out again to all the connected users.
-    // See http://doc.pekko.io/docs/pekko/2.6/scala/stream/stream-dynamic.html
+    // See http://doc.akka.io/docs/akka/2.6/scala/stream/stream-dynamic.html
     // for details on these features.
     Pair<Sink<String, NotUsed>, Source<String, NotUsed>> pair = MergeHub.of(String.class)
         .toMat(BroadcastHub.of(String.class), Keep.both()).run(materializer);

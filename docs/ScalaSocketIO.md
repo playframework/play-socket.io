@@ -325,7 +325,7 @@ val encoder = encodeByType {
 
 ### Handling binary arguments
 
-Binary arguments can be handled using `decodeBytes` and `encodeBytes`, which decodes and encodes the argument to `pekko.util.ByteString`:
+Binary arguments can be handled using `decodeBytes` and `encodeBytes`, which decodes and encodes the argument to `ByteString`:
 
 ```scala
 import play.socketio.scaladsl.SocketIOEventCodec._
@@ -342,7 +342,7 @@ val encoder = encodeByType {
 
 ### Handling no arguments
 
-In certain situations you may have a message with no arguments. This can be handled by using `encodeNoArgs` or `decodeNoArgs`, which produces `pekko.NotUsed` as the message:
+In certain situations you may have a message with no arguments. This can be handled by using `encodeNoArgs` or `decodeNoArgs`, which produces `NotUsed` as the message:
 
 ```scala
 import play.socketio.scaladsl.SocketIOEventCodec._

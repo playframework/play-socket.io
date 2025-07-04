@@ -361,10 +361,11 @@ public class MyCodec extends SocketIOEventCodec<Object, Pair<String, Consumer<St
 
 ### Handling binary arguments
 
-Binary arguments can be handled using `decodeBytes` and `encodeBytes`, which decodes and encodes the argument to `pekko.util.ByteString`:
+Binary arguments can be handled using `decodeBytes` and `encodeBytes`, which decodes and encodes the argument to `ByteString`:
 
 ```java
 import play.socketio.javadsl.SocketIOEventCodec;
+import org.apache.pekko.util.ByteString;
 
 public class MyCodec extends SocketIOEventCodec<ByteString, ByteString> {
   {
@@ -376,10 +377,11 @@ public class MyCodec extends SocketIOEventCodec<ByteString, ByteString> {
 
 ### Handling no arguments
 
-In certain situations you may have a message with no arguments. This can be handled by using `encodeNoArgs` or `decodeNoArgs`, which produces `pekko.NotUsed` as the message:
+In certain situations you may have a message with no arguments. This can be handled by using `encodeNoArgs` or `decodeNoArgs`, which produces `NotUsed` as the message:
 
 ```java
 import play.socketio.javadsl.SocketIOEventCodec;
+import org.apache.pekko.NotUsed;
 
 public class MyCodec extends SocketIOEventCodec<NotUsed, NotUsed> {
   {
@@ -533,11 +535,11 @@ Or to a custom namespace:
 ```java
 socketIO.createBuilder()
   .onConnect((request, sessionId) -> {
-    String user = request.session().get("user");
-    if (user == null) {
-      throw new NotAuthenticatedException();
+    Optional<String> user = request.session().get("user");
+    if (user.isPresent()) {
+      return user.get();
     } else {
-      return user;
+      throw new NotAuthenticatedException();
     }
   })
   .addNamespace(new MyCodec(), (session, namespace) -> {

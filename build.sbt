@@ -5,7 +5,7 @@ import play.core.PlayVersion.{ current => playVersion }
 
 lazy val runChromeWebDriver = taskKey[Unit]("Run the chromewebdriver tests")
 
-val macwire = "com.softwaremill.macwire" %% "macros" % "2.5.7"
+val macwire = "com.softwaremill.macwire" %% "macros" % "2.5.9"
 val lombok  = "org.projectlombok"         % "lombok" % "1.18.8" % Provided
 val akkaCluster = Seq(
   "com.typesafe.akka" %% "akka-cluster"       % AkkaVersion,
@@ -39,10 +39,10 @@ lazy val root = (project in file("."))
       "com.typesafe.play" %% "play-guice" % playVersion % Test,
       macwire              % Test,
       // Test dependencies for running chrome driver
-      "io.github.bonigarcia"    % "webdrivermanager"       % "5.3.2" % Test,
+      "io.github.bonigarcia"    % "webdrivermanager"       % "5.3.3" % Test,
       "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.9.1" % Test,
       // Test framework dependencies
-      "org.scalatest" %% "scalatest"       % "3.1.2" % Test,
+      "org.scalatest" %% "scalatest"       % "3.1.4" % Test,
       "com.novocode"   % "junit-interface" % "0.11"  % Test
     ),
     (Compile / PB.targets) := Seq(

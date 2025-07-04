@@ -8,30 +8,31 @@ import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
 
-import akka.NotUsed
-import akka.pattern.ask
-import akka.actor.ActorRef
-import akka.actor.ActorSystem
-import akka.routing.FromConfig
-import akka.stream._
-import akka.stream.scaladsl.Flow
-import akka.stream.scaladsl.Sink
-import akka.stream.scaladsl.Source
-import akka.util.Timeout
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
+import scala.util.Failure
+import scala.util.Success
+
+import org.apache.pekko.actor.ActorRef
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.routing.FromConfig
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl.Flow
+import org.apache.pekko.stream.scaladsl.Sink
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.util.Timeout
+import org.apache.pekko.NotUsed
+import play.api.http.HttpErrorHandler
+import play.api.inject.Binding
+import play.api.inject.Module
+import play.api.mvc._
 import play.api.Configuration
 import play.api.Environment
 import play.api.Logger
-import play.api.http.HttpErrorHandler
-import play.api.inject.Module
-import play.api.mvc._
-import play.engineio.EngineIOManagerActor._
 import play.engineio.protocol._
-
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
-import scala.concurrent.duration._
-import scala.util.Failure
-import scala.util.Success
+import play.engineio.EngineIOManagerActor._
 
 case class EngineIOConfig(
     pingInterval: FiniteDuration = 25.seconds,
@@ -43,7 +44,7 @@ case class EngineIOConfig(
 )
 
 object EngineIOConfig {
-  def fromConfiguration(configuration: Configuration) = {
+  def fromConfiguration(configuration: Configuration): EngineIOConfig = {
     val config = configuration.get[Configuration]("play.engine-io")
     EngineIOConfig(
       pingInterval = config.get[FiniteDuration]("ping-interval"),
@@ -86,8 +87,8 @@ final class EngineIOController(
 )(implicit ec: ExecutionContext)
     extends AbstractController(controllerComponents) {
 
-  private val log              = Logger(classOf[EngineIOController])
-  private implicit val timeout = Timeout(config.pingTimeout)
+  private val log                       = Logger(classOf[EngineIOController])
+  private implicit val timeout: Timeout = Timeout(config.pingTimeout)
 
   /**
    * The endpoint to route to from a router.
@@ -160,7 +161,7 @@ final class EngineIOController(
     }
   }
 
-  private def webSocketFlow(sid: String, requestId: String): Flow[EngineIOPacket, EngineIOPacket, _] = {
+  private def webSocketFlow(sid: String, requestId: String): Flow[EngineIOPacket, EngineIOPacket, ?] = {
     val transport = EngineIOTransport.WebSocket
 
     log.debug(s"Received WebSocket request for $sid")
@@ -169,7 +170,7 @@ final class EngineIOController(
       .batch(4, Vector(_))(_ :+ _)
       .mapAsync(1) { packets => engineIOManager ? Packets(sid, transport, packets, requestId) }
       .to(Sink.ignore.mapMaterializedValue(_.onComplete {
-        case Success(s) =>
+        case Success(_) =>
           engineIOManager ! Close(sid, transport, requestId)
         case Failure(t) =>
           log.warn("Error on incoming WebSocket", t)
@@ -180,15 +181,16 @@ final class EngineIOController(
       .mapAsync(1) { _ =>
         val asked = engineIOManager ? Retrieve(sid, transport, requestId)
         asked.onComplete {
-          case Success(s) =>
+          case Success(_) =>
           case Failure(t) =>
             log.warn("Error on outgoing WebSocket", t)
         }
         asked
       }
       .takeWhile(!_.isInstanceOf[Close])
-      .mapConcat { case Packets(_, _, packets: Seq[EngineIOPacket], _) =>
-        collection.immutable.Seq[EngineIOPacket](packets: _*)
+      .mapConcat {
+        case Packets(_, _, packets: Seq[EngineIOPacket], _) =>
+          collection.immutable.Seq[EngineIOPacket](packets: _*)
       }
 
     Flow.fromSinkAndSourceCoupled(in, out)
@@ -224,9 +226,9 @@ final class EngineIO @Inject() (
         // Start the manager, if we're configured to do so
         config.useRole match {
           case Some(role) =>
-            Configuration(actorSystem.settings.config).getOptional[Seq[String]]("akka.cluster.roles") match {
+            Configuration(actorSystem.settings.config).getOptional[Seq[String]]("pekko.cluster.roles") match {
               case None =>
-                throw new IllegalArgumentException("akka.cluster.roles is not set, are you using Akka clustering?")
+                throw new IllegalArgumentException("pekko.cluster.roles is not set, are you using Pekko clustering?")
               case Some(roles) if roles.contains(role) =>
                 startManager()
               case _ =>
@@ -272,7 +274,7 @@ trait EngineIOComponents {
  * Provides engine.io components to Play's runtime dependency injection implementation.
  */
 class EngineIOModule extends Module {
-  override def bindings(environment: Environment, configuration: Configuration) = Seq(
+  override def bindings(environment: Environment, configuration: Configuration): Seq[Binding[?]] = Seq(
     bind[EngineIOConfig].toProvider[EngineIOConfigProvider],
     bind[EngineIO].toSelf
   )

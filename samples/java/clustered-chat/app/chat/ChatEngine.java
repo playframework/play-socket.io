@@ -1,15 +1,17 @@
 package chat;
 
-import akka.NotUsed;
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.cluster.pubsub.DistributedPubSub;
-import akka.cluster.pubsub.DistributedPubSubMediator.Publish;
-import akka.cluster.pubsub.DistributedPubSubMediator.Subscribe;
-import akka.stream.Materializer;
-import akka.stream.OverflowStrategy;
-import akka.stream.javadsl.*;
-import lombok.val;
+import chat.ChatEvent.ChatMessage;
+import chat.ChatEvent.JoinRoom;
+import chat.ChatEvent.LeaveRoom;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.actor.ActorRef;
+import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.cluster.pubsub.DistributedPubSub;
+import org.apache.pekko.cluster.pubsub.DistributedPubSubMediator.Publish;
+import org.apache.pekko.cluster.pubsub.DistributedPubSubMediator.Subscribe;
+import org.apache.pekko.stream.Materializer;
+import org.apache.pekko.stream.OverflowStrategy;
+import org.apache.pekko.stream.javadsl.*;
 import play.Logger;
 import play.engineio.EngineIOController;
 import play.socketio.javadsl.SocketIO;
@@ -18,9 +20,6 @@ import play.socketio.javadsl.SocketIOEventCodec;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
-
-import chat.ChatEvent.*;
-
 import java.util.Optional;
 
 @Singleton
@@ -31,13 +30,12 @@ public class ChatEngine implements Provider<EngineIOController> {
   private final ActorRef mediator;
 
   @Inject
-  @SuppressWarnings("unchecked")
   public ChatEngine(SocketIO socketIO, Materializer materializer, ActorSystem actorSystem) {
     this.materializer = materializer;
     this.mediator = DistributedPubSub.get(actorSystem).mediator();
 
     // Here we define our codec. We're serializing our events to/from json.
-    val codec = new SocketIOEventCodec<ChatEvent, ChatEvent>() {
+    var codec = new SocketIOEventCodec<ChatEvent, ChatEvent>() {
       {
         addDecoder("chat message", decodeJson(ChatMessage.class));
         addDecoder("join room", decodeJson(JoinRoom.class));
@@ -53,13 +51,12 @@ public class ChatEngine implements Provider<EngineIOController> {
         .onConnect((request, sid) -> {
           Logger.info("New session created: " + sid);
           // Extract the username from the header
-          val username = request.getQueryString("user");
-          if (username == null) {
-            throw new RuntimeException("No user parameter");
+          var username = request.queryString("user");
+          if (username.isPresent()) {
+            // And return the user, this will be the data for the session that we can read when we add a namespace
+            return new User(username.get());
           }
-          // And return the user, this will be the data for the session that we can read when we add a namespace
-          return new User(username);
-
+          throw new RuntimeException("No user parameter");
         }).addNamespace(codec, (session, chat) -> {
           if (chat.split("\\?")[0].equals("/chat")) {
             return Optional.of(createFlow(session.data()));
@@ -74,12 +71,12 @@ public class ChatEngine implements Provider<EngineIOController> {
   private Flow<ChatEvent, ChatEvent, NotUsed> getChatRoom(String room, User user) {
 
     // Create a sink that sends all the messages to the chat room
-    val sink = Sink.<ChatEvent>foreach(message ->
+    var sink = Sink.<ChatEvent>foreach(message ->
       mediator.tell(new Publish(room, message), ActorRef.noSender())
     );
 
     // Create a source that subscribes to messages from the chatroom
-    val source = Source.<ChatEvent>actorRef(16, OverflowStrategy.dropHead())
+    var source = Source.<ChatEvent>actorRef(16, OverflowStrategy.dropHead())
       .mapMaterializedValue(ref -> {
         mediator.tell(new Subscribe(room, ref), ActorRef.noSender());
         return NotUsed.getInstance();
@@ -96,6 +93,7 @@ public class ChatEngine implements Provider<EngineIOController> {
     );
   }
 
+  @SuppressWarnings("unchecked")
   private Flow<ChatEvent, ChatEvent, NotUsed> createFlow(User user) {
     // broadcast source and sink for demux/muxing multiple chat rooms in this one flow
     // They'll be provided later when we materialize the flow
@@ -105,8 +103,8 @@ public class ChatEngine implements Provider<EngineIOController> {
     // Create a chat flow for a user session
     return Flow.<ChatEvent>create().map(event -> {
       if (event instanceof JoinRoom) {
-        val room = event.getRoom();
-        val roomFlow = getChatRoom(room, user);
+        var room = event.getRoom();
+        var roomFlow = getChatRoom(room, user);
 
         // Add the room to our flow
         broadcastSource[0]

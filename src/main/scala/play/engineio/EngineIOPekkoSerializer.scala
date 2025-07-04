@@ -3,19 +3,21 @@
  */
 package play.engineio
 
-import akka.actor.ExtendedActorSystem
-import akka.serialization.BaseSerializer
-import akka.serialization.SerializerWithStringManifest
-import akka.util.{ ByteString => AByteString }
 import com.google.protobuf.{ ByteString => PByteString }
-import play.engineio.EngineIOManagerActor._
-import play.engineio.protocol._
+import org.apache.pekko.actor.ExtendedActorSystem
+import org.apache.pekko.serialization.BaseSerializer
+import org.apache.pekko.serialization.SerializerWithStringManifest
+import org.apache.pekko.util.{ ByteString => AByteString }
 import play.engineio.protobuf.{ engineio => p }
+import play.engineio.protocol._
+import play.engineio.EngineIOManagerActor._
 
 /**
  * Serializer for all messages sent to/from the EngineIOManagerActor.
  */
-class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends SerializerWithStringManifest with BaseSerializer {
+class EngineIOPekkoSerializer(val system: ExtendedActorSystem)
+    extends SerializerWithStringManifest
+    with BaseSerializer {
 
   private val ConnectManifest                   = "A"
   private val PacketsManifest                   = "B"
@@ -25,7 +27,7 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
   private val UnknownSessionIdManifest          = "F"
   private val SessionClosedManifest             = "G"
 
-  override def manifest(obj: AnyRef) = obj match {
+  override def manifest(obj: AnyRef): String = obj match {
     case _: Connect                   => ConnectManifest
     case _: Packets                   => PacketsManifest
     case _: Retrieve                  => RetrieveManifest
@@ -76,7 +78,7 @@ class EngineIOAkkaSerializer(val system: ExtendedActorSystem) extends Serializer
     protobufObject.toByteArray
   }
 
-  override def fromBinary(bytes: Array[Byte], manifest: String) = manifest match {
+  override def fromBinary(bytes: Array[Byte], manifest: String): AnyRef = manifest match {
     case `ConnectManifest` =>
       val connect = p.Connect.parseFrom(bytes)
       Connect(

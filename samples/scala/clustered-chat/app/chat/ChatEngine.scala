@@ -1,21 +1,22 @@
 package chat
 
-import akka.NotUsed
-import akka.actor.ActorSystem
-import akka.cluster.pubsub.DistributedPubSub
-import akka.cluster.pubsub.DistributedPubSubMediator.Publish
-import akka.cluster.pubsub.DistributedPubSubMediator.Subscribe
-import akka.stream._
-import akka.stream.scaladsl.BroadcastHub
-import akka.stream.scaladsl.Flow
-import akka.stream.scaladsl.MergeHub
-import akka.stream.scaladsl.Sink
-import akka.stream.scaladsl.Source
-import play.api.Logger
+import org.apache.pekko.actor.ActorRef
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.cluster.pubsub.DistributedPubSub
+import org.apache.pekko.cluster.pubsub.DistributedPubSubMediator.Publish
+import org.apache.pekko.cluster.pubsub.DistributedPubSubMediator.Subscribe
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl.BroadcastHub
+import org.apache.pekko.stream.scaladsl.Flow
+import org.apache.pekko.stream.scaladsl.MergeHub
+import org.apache.pekko.stream.scaladsl.Sink
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.NotUsed
+import play.api.libs.functional.syntax._
 import play.api.libs.json.Format
 import play.api.libs.json.Json
+import play.api.Logger
 import play.engineio.EngineIOController
-import play.api.libs.functional.syntax._
 import play.socketio.scaladsl.SocketIO
 
 /**
@@ -50,13 +51,13 @@ object User {
 object ChatProtocol {
   import play.socketio.scaladsl.SocketIOEventCodec._
 
-  val decoder = decodeByName {
+  val decoder: SocketIOEventsDecoder[ChatEvent] = decodeByName {
     case "chat message" => decodeJson[ChatMessage]
     case "join room"    => decodeJson[JoinRoom]
     case "leave room"   => decodeJson[LeaveRoom]
   }
 
-  val encoder = encodeByType[ChatEvent] {
+  val encoder: SocketIOEventsEncoder[ChatEvent] = encodeByType[ChatEvent] {
     case _: ChatMessage => "chat message" -> encodeJson[ChatMessage]
     case _: JoinRoom    => "join room"    -> encodeJson[JoinRoom]
     case _: LeaveRoom   => "leave room"   -> encodeJson[LeaveRoom]
@@ -67,9 +68,9 @@ class ChatEngine(socketIO: SocketIO, system: ActorSystem)(implicit mat: Material
 
   import ChatProtocol._
 
-  val mediator = DistributedPubSub(system).mediator
+  val mediator: ActorRef = DistributedPubSub(system).mediator
 
-  // This gets a chat room using Akka distributed pubsub
+  // This gets a chat room using Pekko distributed pubsub
   private def getChatRoom(user: User, room: String) = {
 
     // Create a sink that sends all the messages to the chat room

@@ -1,6 +1,6 @@
 # Java clustered chat example
 
-This is a clustered version of the multi room chat server example written with Play socket.io. It demonstrates how to run Play socket.io in a multi node environment. It uses a consistent hashing cluster group router to route sessions, and uses Akka distributed pubsub to publish/subscribe to rooms.
+This is a clustered version of the multi room chat server example written with Play socket.io. It demonstrates how to run Play socket.io in a multi node environment. It uses a consistent hashing cluster group router to route sessions, and uses Pekko distributed pubsub to publish/subscribe to rooms.
 
 The [`cluster.sh`](./cluster.sh) script has been provided to facilitate with building and then running the app in a cluster, it starts up three nodes, and starts up an nginx load balancer in front of the three nodes. Configuration for the load balancer can be found [here](./nginx.conf). It requires that `nginx` is available on your path.
 

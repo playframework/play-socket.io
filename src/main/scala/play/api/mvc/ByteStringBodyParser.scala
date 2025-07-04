@@ -3,7 +3,9 @@
  */
 package play.api.mvc
 
-import akka.util.ByteString
+import org.apache.pekko.stream.Materializer
+import org.apache.pekko.util.ByteString
+import play.api.http.ParserConfiguration
 
 /**
  * Created to use in the meantime before https://github.com/playframework/playframework/pull/7551 is merged and
@@ -14,15 +16,15 @@ import akka.util.ByteString
 class ByteStringBodyParser(parsers: PlayBodyParsers) {
 
   private object myParsers extends PlayBodyParsers {
-    private[play] implicit override def materializer = parsers.materializer
-    override def config                              = parsers.config
-    private[play] override def errorHandler          = parsers.errorHandler
-    private[play] override def temporaryFileCreator  = parsers.temporaryFileCreator
+    private[play] implicit override def materializer: Materializer = parsers.materializer
+    override def config: ParserConfiguration                       = parsers.config
+    private[play] override def errorHandler                        = parsers.errorHandler
+    private[play] override def temporaryFileCreator                = parsers.temporaryFileCreator
 
     // Overridden to make public
     override def tolerantBodyParser[A](name: String, maxLength: Long, errorMessage: String)(
         parser: (RequestHeader, ByteString) => A
-    ) =
+    ): BodyParser[A] =
       super.tolerantBodyParser(name, maxLength, errorMessage)(parser)
   }
 

@@ -40,7 +40,7 @@ lazy val root = (project in file("."))
       macwire              % Test,
       // Test dependencies for running chrome driver
       "io.github.bonigarcia"    % "webdrivermanager"       % "5.8.0"  % Test,
-      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.24.0" % Test,
+      "org.seleniumhq.selenium" % "selenium-chrome-driver" % "4.34.0" % Test,
       // Test framework dependencies
       "org.scalatest" %% "scalatest"       % "3.2.19" % Test,
       "com.novocode"   % "junit-interface" % "0.11"   % Test

@@ -25,12 +25,9 @@ object TestSocketIOServer {
           case GET(p"/socket.io/") ? q"transport=$transport"  => controller.endpoint(transport)
           case POST(p"/socket.io/") ? q"transport=$transport" => controller.endpoint(transport)
           case GET(p"$path*") =>
+            println(path)
             EssentialAction { rh =>
-              (if (path.endsWith("/")) {
-                 extAssets(path + "index.html")
-               } else {
-                 extAssets(path)
-               }).apply(rh).map(_.withHeaders("Cache-Control" -> "no-cache"))
+              extAssets(path).apply(rh).map(_.withHeaders("Cache-Control" -> "no-cache"))
             }
         }
       },

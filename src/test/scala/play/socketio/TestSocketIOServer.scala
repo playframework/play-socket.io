@@ -5,6 +5,7 @@ package play.socketio
 
 import scala.concurrent.ExecutionContext
 
+import play.api.http.HeaderNames.CACHE_CONTROL
 import play.api.mvc.EssentialAction
 import play.api.routing.sird._
 import play.api.routing.Router
@@ -19,15 +20,14 @@ object TestSocketIOServer {
   def start(testApplication: TestSocketIOApplication, config: ServerConfig = ServerConfig()): PekkoHttpServer = {
     PekkoHttpServer.fromApplication(
       testApplication.createApplication { (assets, controller, executionContext) =>
-        def extAssets: String => EssentialAction = assets.at("src/test/javascript", _)
-        implicit val ec: ExecutionContext        = executionContext
+        implicit val ec: ExecutionContext = executionContext
         Router.from {
           case GET(p"/socket.io/") ? q"transport=$transport"  => controller.endpoint(transport)
           case POST(p"/socket.io/") ? q"transport=$transport" => controller.endpoint(transport)
           case GET(p"$path*") =>
             println(path)
             EssentialAction { rh =>
-              extAssets(path).apply(rh).map(_.withHeaders("Cache-Control" -> "no-cache"))
+              assets.at("src/test/javascript", path).apply(rh).map(_.withHeaders(CACHE_CONTROL -> "no-cache"))
             }
         }
       },

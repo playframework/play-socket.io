@@ -50,4 +50,4 @@ jobs:
     if: github.event_name == 'pull_request'
     needs: # Should be last
       - "samples"
-    uses: playframework/.github/.github/workflows/rtm.yml@v3
+    uses: playframework/.github/.github/workflows/rtm.yml@v4

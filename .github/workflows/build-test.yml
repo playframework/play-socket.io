@@ -15,7 +15,7 @@ concurrency:
 jobs:
   check-code-style:
     name: Code Style
-    uses: playframework/.github/.github/workflows/cmd.yml@v3
+    uses: playframework/.github/.github/workflows/cmd.yml@v4
     with:
       cmd: sbt validateCode
 
@@ -28,7 +28,7 @@ jobs:
     needs:
       - "check-code-style"
       - "check-binary-compatibility"
-    uses: playframework/.github/.github/workflows/cmd.yml@v3
+    uses: playframework/.github/.github/workflows/cmd.yml@v4
     with:
       scala: 2.12.x, 2.13.x
       cmd: sbt ++$MATRIX_SCALA test
@@ -37,7 +37,7 @@ jobs:
     name: Samples
     needs:
       - "tests"
-    uses: playframework/.github/.github/workflows/cmd.yml@v3
+    uses: playframework/.github/.github/workflows/cmd.yml@v4
     with:
       add-dimensions: >-
         {

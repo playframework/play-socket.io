@@ -1,20 +1,20 @@
 package chat
 
-import akka.NotUsed
-import akka.stream._
-import akka.stream.scaladsl.BroadcastHub
-import akka.stream.scaladsl.Flow
-import akka.stream.scaladsl.Keep
-import akka.stream.scaladsl.MergeHub
-import akka.stream.scaladsl.Sink
-import akka.stream.scaladsl.Source
+import scala.collection.concurrent.TrieMap
+
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl.BroadcastHub
+import org.apache.pekko.stream.scaladsl.Flow
+import org.apache.pekko.stream.scaladsl.Keep
+import org.apache.pekko.stream.scaladsl.MergeHub
+import org.apache.pekko.stream.scaladsl.Sink
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.NotUsed
+import play.api.libs.functional.syntax._
 import play.api.libs.json.Format
 import play.api.libs.json.Json
 import play.engineio.EngineIOController
-import play.api.libs.functional.syntax._
 import play.socketio.scaladsl.SocketIO
-
-import scala.collection.concurrent.TrieMap
 
 object ChatProtocol {
 
@@ -49,13 +49,13 @@ object ChatProtocol {
 
   import play.socketio.scaladsl.SocketIOEventCodec._
 
-  val decoder = decodeByName {
+  val decoder: SocketIOEventsDecoder[ChatEvent] = decodeByName {
     case "chat message" => decodeJson[ChatMessage]
     case "join room"    => decodeJson[JoinRoom]
     case "leave room"   => decodeJson[LeaveRoom]
   }
 
-  val encoder = encodeByType[ChatEvent] {
+  val encoder: SocketIOEventsEncoder[ChatEvent] = encodeByType[ChatEvent] {
     case _: ChatMessage => "chat message" -> encodeJson[ChatMessage]
     case _: JoinRoom    => "join room"    -> encodeJson[JoinRoom]
     case _: LeaveRoom   => "leave room"   -> encodeJson[LeaveRoom]
@@ -135,7 +135,7 @@ class ChatEngine(socketIO: SocketIO)(implicit mat: Materializer) {
   }
 
   val controller: EngineIOController = socketIO.builder
-    .onConnect { (request, sid) =>
+    .onConnect { (request, _) =>
       // Extract the username from the header
       val username = request.getQueryString("user").getOrElse {
         throw new RuntimeException("No user parameter")

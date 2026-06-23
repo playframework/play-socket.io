@@ -3,21 +3,21 @@
  */
 package play.socketio.protocol
 
-import akka.util.ByteString
+import scala.collection.immutable
+
+import org.apache.pekko.util.ByteString
 import play.api.libs.json._
 import play.engineio.protocol._
 import play.engineio.BinaryEngineIOMessage
 import play.engineio.EngineIOMessage
 import play.engineio.TextEngineIOMessage
 
-import scala.collection.immutable
-
 /**
  * A socket.io packet type.
  */
 sealed abstract class SocketIOPacketType private (val id: Int) {
   // Encode the packet as a char.
-  val asChar = id.toString.head
+  val asChar: Char = id.toString.head
 }
 
 object SocketIOPacketType {
@@ -29,7 +29,7 @@ object SocketIOPacketType {
   case object BinaryEvent extends SocketIOPacketType(5)
   case object BinaryAck   extends SocketIOPacketType(6)
 
-  def fromChar(char: Char) = char match {
+  def fromChar(char: Char): SocketIOPacketType = char match {
     case '0' => Connect
     case '1' => Disconnect
     case '2' => Event
@@ -50,28 +50,28 @@ sealed trait SocketIOPacket {
 }
 
 case class SocketIOConnectPacket(namespace: Option[String]) extends SocketIOPacket {
-  override def packetType = SocketIOPacketType.Connect
+  override def packetType: SocketIOPacketType = SocketIOPacketType.Connect
 }
 
 case class SocketIODisconnectPacket(namespace: Option[String]) extends SocketIOPacket {
-  override def packetType = SocketIOPacketType.Disconnect
+  override def packetType: SocketIOPacketType = SocketIOPacketType.Disconnect
 }
 
 case class SocketIOEventPacket(namespace: Option[String], data: Seq[JsValue], id: Option[Long]) extends SocketIOPacket {
-  override def packetType = SocketIOPacketType.Event
+  override def packetType: SocketIOPacketType = SocketIOPacketType.Event
 }
 
 case class SocketIOAckPacket(namespace: Option[String], data: Seq[JsValue], id: Long) extends SocketIOPacket {
-  override def packetType = SocketIOPacketType.Ack
+  override def packetType: SocketIOPacketType = SocketIOPacketType.Ack
 }
 
 case class SocketIOErrorPacket(namespace: Option[String], data: JsValue) extends SocketIOPacket {
-  override def packetType = SocketIOPacketType.Error
+  override def packetType: SocketIOPacketType = SocketIOPacketType.Error
 }
 
 object SocketIOErrorPacket {
   def encode(namespace: Option[String], data: JsValue): Utf8EngineIOPacket = {
-    val message = new StringBuilder
+    val message = new StringBuilder()
     message += SocketIOPacketType.Error.asChar
     namespace.foreach { ns =>
       message ++= ns
@@ -87,12 +87,12 @@ case class SocketIOBinaryEventPacket(
     data: Seq[Either[JsValue, ByteString]],
     id: Option[Long]
 ) extends SocketIOPacket {
-  override def packetType = SocketIOPacketType.BinaryEvent
+  override def packetType: SocketIOPacketType = SocketIOPacketType.BinaryEvent
 }
 
 case class SocketIOBinaryAckPacket(namespace: Option[String], data: Seq[Either[JsValue, ByteString]], id: Long)
     extends SocketIOPacket {
-  override def packetType = SocketIOPacketType.BinaryAck
+  override def packetType: SocketIOPacketType = SocketIOPacketType.BinaryAck
 }
 
 object SocketIOPacket {
@@ -103,7 +103,7 @@ object SocketIOPacket {
   def encode(packet: SocketIOPacket): List[EngineIOMessage] = {
 
     // First, write packet type. Binary packets get handled specially.
-    val message = new StringBuilder
+    val message = new StringBuilder()
     packet match {
       case SocketIOBinaryEventPacket(_, data, _) =>
         val placeholders = data.count(_.isRight)
@@ -114,7 +114,7 @@ object SocketIOPacket {
           message ++= placeholders.toString
           message += '-'
         }
-      case SocketIOBinaryAckPacket(_, data, id) =>
+      case SocketIOBinaryAckPacket(_, data, _) =>
         val placeholders = data.count(_.isRight)
         if (placeholders == 0) {
           message += SocketIOPacketType.Ack.asChar
@@ -163,7 +163,7 @@ object SocketIOPacket {
     }
 
     TextEngineIOMessage(message.toString) ::
-      extraPackets.map(BinaryEngineIOMessage)
+      extraPackets.map { BinaryEngineIOMessage.apply }
   }
 
   /**

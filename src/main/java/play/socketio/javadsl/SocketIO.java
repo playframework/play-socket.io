@@ -3,14 +3,14 @@
  */
 package play.socketio.javadsl;
 
-import akka.NotUsed;
-import akka.stream.Materializer;
-import akka.stream.javadsl.BidiFlow;
-import akka.stream.javadsl.Flow;
-import akka.stream.javadsl.Sink;
-import akka.stream.scaladsl.Source;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.stream.Materializer;
+import org.apache.pekko.stream.javadsl.BidiFlow;
+import org.apache.pekko.stream.javadsl.Flow;
+import org.apache.pekko.stream.javadsl.Sink;
+import org.apache.pekko.stream.scaladsl.Source;
 import play.engineio.EngineIO;
 import play.engineio.EngineIOController;
 import play.engineio.EngineIOSessionHandler;
@@ -118,7 +118,7 @@ public final class SocketIO {
      * If you wish to reject the connection, you can throw an exception, which will later be handled by the error
      * handler to turn it into a message to send to the client.
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public <S extends SessionData> SocketIOBuilder<S> onConnectAsync(
         BiFunction<Http.RequestHeader, String, CompletionStage<S>> callback
     ) {

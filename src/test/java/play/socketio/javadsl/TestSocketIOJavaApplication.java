@@ -3,15 +3,14 @@
  */
 package play.socketio.javadsl;
 
-
-import akka.NotUsed;
-import akka.japi.Pair;
-import akka.stream.Materializer;
-import akka.stream.OverflowStrategy;
-import akka.stream.javadsl.*;
-import akka.util.ByteString;
 import com.google.inject.AbstractModule;
 import controllers.ExternalAssets;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.japi.Pair;
+import org.apache.pekko.stream.Materializer;
+import org.apache.pekko.stream.OverflowStrategy;
+import org.apache.pekko.stream.javadsl.*;
+import org.apache.pekko.util.ByteString;
 import play.api.Application;
 import play.api.libs.json.JsString;
 import play.api.libs.json.JsValue;
@@ -24,9 +23,9 @@ import play.socketio.TestSocketIOServer;
 import scala.Function3;
 import scala.Option;
 import scala.concurrent.ExecutionContext;
+import scala.jdk.javaapi.CollectionConverters;
 import scala.util.Either;
 import scala.util.Left;
-import scala.collection.JavaConverters;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
@@ -48,7 +47,7 @@ public class TestSocketIOJavaApplication implements TestSocketIOApplication {
             bind(Router.class).toProvider(new RouterProvider(routerBuilder));
           }
         })
-        .build().getWrappedApplication();
+        .build().asScala();
 
     System.out.println("Started Java application.");
     return application;
@@ -83,7 +82,7 @@ public class TestSocketIOJavaApplication implements TestSocketIOApplication {
 
     return socketIO.createBuilder()
         .onConnect((req, sid) -> {
-          if ("true".equals(req.getQueryString("fail"))) {
+          if (req.queryString("fail").filter("true"::equals).isPresent()) {
             throw new RuntimeException("failed");
           } else {
             return NotUsed.getInstance();
@@ -97,9 +96,9 @@ public class TestSocketIOJavaApplication implements TestSocketIOApplication {
                     .watchTermination((notUsed, future) ->
                         future.whenComplete((d, t) -> testDisconnectQueue.offer(
                             new SocketIOEvent("test disconnect",
-                                JavaConverters.asScalaBufferConverter(
+                                CollectionConverters.asScala(
                                     Collections.<Either<JsValue, ByteString>>singletonList(Left.apply(JsString.apply(session.sid())))
-                                ).asScala().toSeq(), Option.empty())
+                                ).toSeq(), Option.empty())
                         ))
                     )
             );

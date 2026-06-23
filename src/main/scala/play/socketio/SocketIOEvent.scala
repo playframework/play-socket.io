@@ -3,7 +3,7 @@
  */
 package play.socketio
 
-import akka.util.ByteString
+import org.apache.pekko.util.ByteString
 import play.api.libs.json.JsValue
 
 /**
@@ -48,6 +48,6 @@ object SocketIOEvent {
    *
    * This is a convenient function for creating events with a name of `"<unnamed>"`.
    */
-  def unnamed(arguments: Seq[Either[JsValue, ByteString]], ack: Option[SocketIOEventAck]) =
+  def unnamed(arguments: Seq[Either[JsValue, ByteString]], ack: Option[SocketIOEventAck]): SocketIOEvent =
     SocketIOEvent("<unnamed>", arguments, ack)
 }

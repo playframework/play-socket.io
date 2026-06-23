@@ -3,12 +3,13 @@
  */
 package play.socketio
 
-import play.api.Configuration
-
-import scala.concurrent.duration._
 import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
+
+import scala.concurrent.duration._
+
+import play.api.Configuration
 
 /**
  * Configuration for socket.io.
@@ -21,7 +22,7 @@ case class SocketIOConfig(
 )
 
 object SocketIOConfig {
-  def fromConfiguration(configuration: Configuration) = {
+  def fromConfiguration(configuration: Configuration): SocketIOConfig = {
     val config = configuration.get[Configuration]("play.socket-io")
     SocketIOConfig(
       ackDeadline = config.get[FiniteDuration]("ack-deadline"),

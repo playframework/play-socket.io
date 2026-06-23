@@ -20,7 +20,7 @@ When you connect to a server using engine.io, you create a session, which is uni
 
 socket.io is a protocol on top of engine.io that allows multiple namespaces to be multiplexed in one engine.io session. This means if you have multiple concerns, you don't need to create multiple sessions (and consequently multiple WebSockets) to handle them.
 
-Play socket.io provides a clean separation of engine.io and socket.io. When you create a socket.io engine, you specify how connection should be handled, you give it an Akka streams `Flow` to handle the default namespace, and then you can add flows for any other namespace you wish to add. Once you have configured that, you can get an instance of an `EngineIOController`, this can then be plugged into your existing Play router to route requests to it.
+Play socket.io provides a clean separation of engine.io and socket.io. When you create a socket.io engine, you specify how connection should be handled, you give it an Pekko streams `Flow` to handle the default namespace, and then you can add flows for any other namespace you wish to add. Once you have configured that, you can get an instance of an `EngineIOController`, this can then be plugged into your existing Play router to route requests to it.
 
 ## Wiring dependencies
 
@@ -129,7 +129,7 @@ public class SocketIOEvent {
 }
 ```
 
-This is exactly how Play socket.io models events. These events are passed through Akka streams, however, they are quite unwieldy to work with, consequently, we need to define a codec to translate these events into something simpler.
+This is exactly how Play socket.io models events. These events are passed through Pekko streams, however, they are quite unwieldy to work with, consequently, we need to define a codec to translate these events into something simpler.
 
 ### Defining a codec
 
@@ -232,7 +232,7 @@ Now, instead of handling high level arguments, we are handling tuples of strings
 
 ```java
 import play.socketio.javadsl.SocketIOEventCodec;
-import akka.japi.Pair;
+import org.apache.pekko.japi.Pair;
 import play.libs.F.Tuple3;
 
 public class MyCodec extends SocketIOEventCodec<ChatEvent, ChatEvent> {
@@ -272,7 +272,7 @@ An ack is a function that sends a message back to the client or server. So when 
 
 ```java
 import play.socketio.javadsl.SocketIOEventCodec;
-import akka.japi.Pair;
+import org.apache.pekko.japi.Pair;
 import java.util.function.Consumer;
 
 public class MyCodec extends SocketIOEventCodec<Pair<String, Consumer<String>>, Object> {
@@ -288,7 +288,7 @@ The type of the above decoder is `Pair<String, Consumer<String>>`. It can be map
 
 ```java
 import play.socketio.javadsl.SocketIOEventCodec;
-import akka.japi.Pair;
+import org.apache.pekko.japi.Pair;
 import java.util.function.Consumer;
 import lombok.Value;
 
@@ -313,7 +313,7 @@ Acks can have multiple arguments, just like regular messages:
 
 ```java
 import play.socketio.javadsl.SocketIOEventCodec;
-import akka.japi.Pair;
+import org.apache.pekko.japi.Pair;
 import java.util.function.Consumer;
 
 public class MyCodec extends SocketIOEventCodec<Pair<String, Consumer<Pair<String, String>>>, Object> {
@@ -328,7 +328,7 @@ You may also want to optionally take an ack, so the client doesn't have to provi
 
 ```java
 import play.socketio.javadsl.SocketIOEventCodec;
-import akka.japi.Pair;
+import org.apache.pekko.japi.Pair;
 import java.util.function.Consumer;
 
 public class MyCodec extends SocketIOEventCodec<Pair<String, Optional<Consumer<String>>>, Object> {
@@ -347,7 +347,7 @@ When encoding messages with acks, you need to provide a decoder so that when the
 
 ```java
 import play.socketio.javadsl.SocketIOEventCodec;
-import akka.japi.Pair;
+import org.apache.pekko.japi.Pair;
 import java.util.function.Consumer;
 
 public class MyCodec extends SocketIOEventCodec<Object, Pair<String, Consumer<String>>> {
@@ -361,10 +361,11 @@ public class MyCodec extends SocketIOEventCodec<Object, Pair<String, Consumer<St
 
 ### Handling binary arguments
 
-Binary arguments can be handled using `decodeBytes` and `encodeBytes`, which decodes and encodes the argument to `akka.util.ByteString`:
+Binary arguments can be handled using `decodeBytes` and `encodeBytes`, which decodes and encodes the argument to `ByteString`:
 
 ```java
 import play.socketio.javadsl.SocketIOEventCodec;
+import org.apache.pekko.util.ByteString;
 
 public class MyCodec extends SocketIOEventCodec<ByteString, ByteString> {
   {
@@ -376,10 +377,11 @@ public class MyCodec extends SocketIOEventCodec<ByteString, ByteString> {
 
 ### Handling no arguments
 
-In certain situations you may have a message with no arguments. This can be handled by using `encodeNoArgs` or `decodeNoArgs`, which produces `akka.NotUsed` as the message:
+In certain situations you may have a message with no arguments. This can be handled by using `encodeNoArgs` or `decodeNoArgs`, which produces `NotUsed` as the message:
 
 ```java
 import play.socketio.javadsl.SocketIOEventCodec;
+import org.apache.pekko.NotUsed;
 
 public class MyCodec extends SocketIOEventCodec<NotUsed, NotUsed> {
   {
@@ -405,7 +407,7 @@ Once you have created a codec for your socket.io event stream, you are ready to 
 
 ```java
 import play.socketio.javadsl.SocketIO;
-import akka.stream.javadsl.Flow;
+import org.apache.pekko.stream.javadsl.Flow;
 
 public class MyEngine {
   
@@ -423,9 +425,9 @@ The above is not that useful since it only lets you chat with yourself, we can u
 
 ```java
 import play.socketio.javadsl.SocketIO;
-import akka.stream.Meterializer;
-import akka.stream.javadsl.*;
-import akka.NotUsed;
+import org.apache.pekko.stream.Meterializer;
+import org.apache.pekko.stream.javadsl.*;
+import org.apache.pekko.NotUsed;
 
 public class MyEngine {
   
@@ -453,9 +455,9 @@ So far we've seen configuring the default namespace, you can also add other name
 
 ```java
 import play.socketio.javadsl.SocketIO;
-import akka.stream.Meterializer;
-import akka.stream.javadsl.*;
-import akka.NotUsed;
+import org.apache.pekko.stream.Meterializer;
+import org.apache.pekko.stream.javadsl.*;
+import org.apache.pekko.NotUsed;
 
 public class MyEngine {
   
@@ -533,11 +535,11 @@ Or to a custom namespace:
 ```java
 socketIO.createBuilder()
   .onConnect((request, sessionId) -> {
-    String user = request.session().get("user");
-    if (user == null) {
-      throw new NotAuthenticatedException();
+    Optional<String> user = request.session().get("user");
+    if (user.isPresent()) {
+      return user.get();
     } else {
-      return user;
+      throw new NotAuthenticatedException();
     }
   })
   .addNamespace(new MyCodec(), (session, namespace) -> {
@@ -571,9 +573,9 @@ The error handler needs to return a `JsonNode`, this will be available as the ar
 
 ## Multi-node setup
 
-Play socket.io is designed to work with Akka clustering in a multi-node setup. Many other socket.io server implementations require sticky load balancing to ensure requests from one client always go to the same node - Play socket.io does not require this, you can use any load balancing approach, such as round robin, to route requests to any node, and Akka clustering can ensure that the engine.io messages sent to that node will be forwarded to the node where that session lives.
+Play socket.io is designed to work with Pekko clustering in a multi-node setup. Many other socket.io server implementations require sticky load balancing to ensure requests from one client always go to the same node - Play socket.io does not require this, you can use any load balancing approach, such as round robin, to route requests to any node, and Pekko clustering can ensure that the engine.io messages sent to that node will be forwarded to the node where that session lives.
 
-The simplest way to do this is to use Akka's consistent hashing router. This can be configured like so in your `application.conf`:
+The simplest way to do this is to use Pekko's consistent hashing router. This can be configured like so in your `application.conf`:
 
 ```
 play.engine-io {
@@ -583,7 +585,7 @@ play.engine-io {
   router-name = "engine.io-router"
 }
 
-akka {
+pekko {
   actor {
 
     # Enable clustering
@@ -612,7 +614,7 @@ akka {
 }
 ```
 
-Now the only thing needed to be done is to configure Akka clustering, which is beyond the scope of this documentation. Full documentation for configuring Akka clustering can be found [here](http://doc.akka.io/docs/akka/2.6/scala/cluster-usage.html).
+Now the only thing needed to be done is to configure Pekko clustering, which is beyond the scope of this documentation. Full documentation for configuring Pekko clustering can be found [here](https://pekko.apache.org/docs/pekko/current/typed/cluster.html).
 
 ## Configuration
 
@@ -685,8 +687,8 @@ The simple chat server can be found [here](../samples/java/chat), it provides a 
 
 ### Multi-room chat server
 
-The multi room chat server can be found [here](../samples/java/multi-room-chat). This is an extension of the simple chat server, it allows users to log in and join and leave different rooms. It demonstrates a more complex dynamic Akka streams setup, along with more complex codecs than simple strings.
+The multi room chat server can be found [here](../samples/java/multi-room-chat). This is an extension of the simple chat server, it allows users to log in and join and leave different rooms. It demonstrates a more complex dynamic Pekko streams setup, along with more complex codecs than simple strings.
 
 ### Clustered chat server
 
-The multi room chat server can be found [here](../samples/java/clustered-chat). This is the multi-room chat server example, modified to run in a cluster.  It configures Play socket.io to run in a cluster, and also modifies the streams for the backend rooms to use Akka distributed pubsub. It includes a script that sets up three nodes running in a cluster, with an nginx round robin load balancer in front of them.
+The multi room chat server can be found [here](../samples/java/clustered-chat). This is the multi-room chat server example, modified to run in a cluster.  It configures Play socket.io to run in a cluster, and also modifies the streams for the backend rooms to use Pekko distributed pubsub. It includes a script that sets up three nodes running in a cluster, with an nginx round robin load balancer in front of them.

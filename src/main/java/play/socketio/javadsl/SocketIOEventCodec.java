@@ -3,23 +3,25 @@
  */
 package play.socketio.javadsl;
 
-import akka.NotUsed;
-import akka.japi.Pair;
-import akka.stream.javadsl.BidiFlow;
-import akka.stream.javadsl.Flow;
-import akka.util.ByteString;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.google.common.collect.ImmutableList;
-import play.api.libs.json.*;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.japi.Pair;
+import org.apache.pekko.stream.javadsl.BidiFlow;
+import org.apache.pekko.stream.javadsl.Flow;
+import org.apache.pekko.util.ByteString;
+import play.api.libs.json.JsValue;
+import play.api.libs.json.Reads$;
+import play.api.libs.json.Writes$;
 import play.libs.F;
 import play.socketio.SocketIOEvent;
 import play.socketio.SocketIOEventAck;
 import scala.Option;
 import scala.Some;
-import scala.collection.JavaConverters;
-import scala.compat.java8.OptionConverters;
+import scala.jdk.javaapi.CollectionConverters;
+import scala.jdk.javaapi.OptionConverters;
 import scala.util.Either;
 import scala.util.Left;
 import scala.util.Right;
@@ -32,7 +34,7 @@ import java.util.function.Predicate;
 
 /**
  * Class for creating socket.io codecs.
- *
+ * <p>
  * Typically this class should by extended, and used to build the codecs. Example use:
  *
  * <pre>
@@ -63,7 +65,7 @@ public class SocketIOEventCodec<In, Out> {
 
   /**
    * Add a decoder to this codec.
-   *
+   * <p>
    * This is a more powerful version of {@link #addDecoder(String, EventDecoder)}, allowing you to not just match
    * events on the name, but based on any predicate on the event.
    *
@@ -78,10 +80,10 @@ public class SocketIOEventCodec<In, Out> {
 
   /**
    * Add an encoder to this codec.
-   *
+   * <p>
    * This variant of the method matches events to encode if they are an instance of the passed in class. Note that due
    * to type erasure, only the direct runtime class of the objects are matched, no generic parameters are matched.
-   *
+   * <p>
    * If the passed in encoder produces events with a name, that name will be overridden by the name passed in here.
    *
    * @param name The name of the event being encoded.
@@ -95,10 +97,10 @@ public class SocketIOEventCodec<In, Out> {
 
   /**
    * Add an encoder to this codec.
-   *
+   * <p>
    * This variant of the method uses a predicate to match events, allowing, for example, the types of values inside
    * tuples to be matched.
-   *
+   * <p>
    * If the passed in encoder produces events with a name, that name will be overridden by the name passed in here.
    *
    * @param name The name of the event being encoded.
@@ -112,10 +114,10 @@ public class SocketIOEventCodec<In, Out> {
 
   /**
    * Add an encoder to this codec.
-   *
+   * <p>
    * This variant of the method uses a predicate to match events, allowing, for example, the types of values inside
    * tuples to be matched.
-   *
+   * <p>
    * It also takes {@link NamedEventEncoder} instances, rather than just {@link EventEncoder}, and so expects that the
    * passed in encoder has named the event correctly.
    *
@@ -130,10 +132,10 @@ public class SocketIOEventCodec<In, Out> {
 
   /**
    * Create the flow to decode and encode events, using the configured decoders and encoders.
-   *
+   * <p>
    * The bidi flow can be joined by a <code>Flow&lt;In, Out, ?&gt;</code> to produce a
    * <code>Flow&lt;<SocketIOEvent, SocketIOEvent, ?&gt;</code> for handling and producing socket.io events.
-   *
+   * <p>
    * Any decoders or encoders added to this codec after this method is invoked will not be used by the returned flow.
    *
    * @return A {@link BidiFlow} for decoding and encoding {@link SocketIOEvent} streams.
@@ -183,7 +185,7 @@ public class SocketIOEventCodec<In, Out> {
           JsonNode jsonNode = Reads$.MODULE$.JsonNodeReads().reads(arg.left().get()).get();
           return reader.readValue(jsonNode);
         } else {
-          return reader.readValue(arg.right().get().toArray());
+          return reader.readValue(arg.toOption().get().toArray());
         }
       } catch (IOException e) {
         throw new EventCodecException("Error decoding value", e);
@@ -196,7 +198,7 @@ public class SocketIOEventCodec<In, Out> {
    * Decode a single argument as a binary message.
    */
   public SingleArgumentDecoder<ByteString> decodeBytes() {
-    return arg -> arg.right().get();
+    return arg -> arg.toOption().get();
   }
 
   /**
@@ -247,7 +249,7 @@ public class SocketIOEventCodec<In, Out> {
 
     /**
      * Map this event decoder to a decoder of another type.
-     *
+     * <p>
      * This produces a new {@link EventDecoder} that uses the passed in function to convert the result of this event
      * decoder into the result of the new event decoder.
      *
@@ -261,7 +263,7 @@ public class SocketIOEventCodec<In, Out> {
 
   /**
    * An event decoder that decodes multiple arguments.
-   *
+   * <p>
    * Primarily a convenience interface to provide an implementation of <code>decodeEvent</code> that extracts the
    * arguments and passes them to <code>decodeArgs</code>.
    */
@@ -277,17 +279,17 @@ public class SocketIOEventCodec<In, Out> {
 
     @Override
     default T decodeEvent(SocketIOEvent event) {
-      return decodeArgs(JavaConverters.seqAsJavaList(event.arguments()));
+      return decodeArgs(CollectionConverters.asJava(event.arguments()));
     }
   }
 
   /**
    * An event decoder that just decodes a single argument.
-   *
+   * <p>
    * This decoder implements both {@link MultiArgumentDecoder} and {@link EventDecoder}. If passed a list of arguments
    * via the <code>decodeArgs</code> method or an event by the <code>decodeEvent</code> method, it will decode the
    * first argument, and fail if there is no argument.
-   *
+   * <p>
    * It can be used as a whole event decoder for events that are expected to only have one argument, or it can be
    * combined with other decoders to allow decoding multiple arguments, via the <code>and</code> method.
    */
@@ -319,7 +321,7 @@ public class SocketIOEventCodec<In, Out> {
 
     /**
      * Combine this decoder with an argument encoder to create a decoder that decodes events that may have acks.
-     *
+     * <p>
      * The passed in encoder will be used if the ack is invoked to encode its arguments before sending them to the
      * client.
      *
@@ -330,17 +332,17 @@ public class SocketIOEventCodec<In, Out> {
     default <A> EventDecoder<Pair<T, Optional<Consumer<A>>>> withMaybeAckEncoder(MultiArgumentEncoder<A> encoder) {
       return event -> {
         return Pair.create(decodeEvent(event), OptionConverters.toJava(event.ack()).map(ack -> {
-          return a -> ack.apply(JavaConverters.asScalaBuffer(encoder.encodeArgs(a)).toSeq());
+          return a -> ack.apply(CollectionConverters.asScala(encoder.encodeArgs(a)).toSeq());
         }));
       };
     }
 
     /**
      * Combine this decoder with an argument encoder to create a decoder that decodes events that must have acks.
-     *
+     * <p>
      * The passed in encoder will be used if the ack is invoked to encode its arguments before sending them to the
      * client.
-     *
+     * <p>
      * This decoder will fail if the event it decodes does not have an ack attached to it.
      *
      * @param encoder The encoder to encode the ack arguments with.
@@ -352,7 +354,7 @@ public class SocketIOEventCodec<In, Out> {
         SocketIOEventAck ack = OptionConverters.toJava(event.ack()).orElseGet(() -> {
           throw new EventCodecException("Expected ack");
         });
-        Consumer<A> consumer = a -> ack.apply(JavaConverters.asScalaBuffer(encoder.encodeArgs(a)).toSeq());
+        Consumer<A> consumer = a -> ack.apply(CollectionConverters.asScala(encoder.encodeArgs(a)).toSeq());
         return Pair.create(decodeEvent(event), consumer);
       };
     }
@@ -369,11 +371,11 @@ public class SocketIOEventCodec<In, Out> {
 
   /**
    * An event decoder that decodes two arguments.
-   *
+   * <p>
    * This decoder implements both {@link MultiArgumentDecoder} and {@link EventDecoder}. If passed a list of arguments
    * via the <code>decodeArgs</code> method or an event by the <code>decodeEvent</code> method, it will decode the
    * first and second arguments, and fail if there are less than two arguments.
-   *
+   * <p>
    * It can be used as a whole event decoder for events that are expected to only have two arguments, or it can be
    * combined with other decoders to allow decoding more arguments, via the <code>and</code> method.
    */
@@ -398,7 +400,7 @@ public class SocketIOEventCodec<In, Out> {
 
     /**
      * Combine this decoder with an argument encoder to create a decoder that decodes events that may have acks.
-     *
+     * <p>
      * The passed in encoder will be used if the ack is invoked to encode its arguments before sending them to the
      * client.
      *
@@ -410,17 +412,17 @@ public class SocketIOEventCodec<In, Out> {
       return event -> {
         Pair<T1, T2> pair = decodeEvent(event);
         return new F.Tuple3<>(pair.first(), pair.second(), OptionConverters.toJava(event.ack()).map(ack -> {
-          return a -> ack.apply(JavaConverters.asScalaBuffer(encoder.encodeArgs(a)).toSeq());
+          return a -> ack.apply(CollectionConverters.asScala(encoder.encodeArgs(a)).toSeq());
         }));
       };
     }
 
     /**
      * Combine this decoder with an argument encoder to create a decoder that decodes events that must have acks.
-     *
+     * <p>
      * The passed in encoder will be used if the ack is invoked to encode its arguments before sending them to the
      * client.
-     *
+     * <p>
      * This decoder will fail if the event it decodes does not have an ack attached to it.
      *
      * @param encoder The encoder to encode the ack arguments with.
@@ -433,18 +435,18 @@ public class SocketIOEventCodec<In, Out> {
           throw new EventCodecException("Expected ack");
         });
         Pair<T1, T2> pair = decodeEvent(event);
-        return new F.Tuple3<>(pair.first(), pair.second(), a -> ack.apply(JavaConverters.asScalaBuffer(encoder.encodeArgs(a)).toSeq()));
+        return new F.Tuple3<>(pair.first(), pair.second(), a -> ack.apply(CollectionConverters.asScala(encoder.encodeArgs(a)).toSeq()));
       };
     }
   }
 
   /**
    * An event decoder that decodes three arguments.
-   *
+   * <p>
    * This decoder implements both {@link MultiArgumentDecoder} and {@link EventDecoder}. If passed a list of arguments
    * via the <code>decodeArgs</code> method or an event by the <code>decodeEvent</code> method, it will decode the
    * first, second and third arguments, and fail if there are less than three arguments.
-   *
+   * <p>
    * It can be used as a whole event decoder for events that are expected to only have three arguments, or it can be
    * combined with other decoders to allow decoding more arguments, via the <code>and</code> method.
    */
@@ -469,7 +471,7 @@ public class SocketIOEventCodec<In, Out> {
 
     /**
      * Combine this decoder with an argument encoder to create a decoder that decodes events that may have acks.
-     *
+     * <p>
      * The passed in encoder will be used if the ack is invoked to encode its arguments before sending them to the
      * client.
      *
@@ -481,17 +483,17 @@ public class SocketIOEventCodec<In, Out> {
       return event -> {
         F.Tuple3<T1, T2, T3> tuple = decodeEvent(event);
         return new F.Tuple4<>(tuple._1, tuple._2, tuple._3, OptionConverters.toJava(event.ack()).map(ack -> {
-          return a -> ack.apply(JavaConverters.asScalaBuffer(encoder.encodeArgs(a)).toSeq());
+          return a -> ack.apply(CollectionConverters.asScala(encoder.encodeArgs(a)).toSeq());
         }));
       };
     }
 
     /**
      * Combine this decoder with an argument encoder to create a decoder that decodes events that must have acks.
-     *
+     * <p>
      * The passed in encoder will be used if the ack is invoked to encode its arguments before sending them to the
      * client.
-     *
+     * <p>
      * This decoder will fail if the event it decodes does not have an ack attached to it.
      *
      * @param encoder The encoder to encode the ack arguments with.
@@ -504,7 +506,7 @@ public class SocketIOEventCodec<In, Out> {
           throw new EventCodecException("Expected ack");
         });
         F.Tuple3<T1, T2, T3> tuple = decodeEvent(event);
-        return new F.Tuple4<>(tuple._1, tuple._2, tuple._3, a -> ack.apply(JavaConverters.asScalaBuffer(encoder.encodeArgs(a)).toSeq()));
+        return new F.Tuple4<>(tuple._1, tuple._2, tuple._3, a -> ack.apply(CollectionConverters.asScala(encoder.encodeArgs(a)).toSeq()));
       };
     }
   }
@@ -524,7 +526,7 @@ public class SocketIOEventCodec<In, Out> {
 
     /**
      * Contravariant map this event encoder to an encoder of another type.
-     *
+     * <p>
      * This produces a new {@link EventEncoder} that uses the passed in function to convert the argument passed into it
      * into the type taken by this event encoder, which is then passed to this encoder to encode the event.
      *
@@ -537,7 +539,7 @@ public class SocketIOEventCodec<In, Out> {
 
     /**
      * Add a name to this event encoder.
-     *
+     * <p>
      * This name will be added to the events encoded by this encoder.
      *
      * @param name The name to add.
@@ -553,14 +555,14 @@ public class SocketIOEventCodec<In, Out> {
 
   /**
    * A named event encoder.
-   *
+   * <p>
    * This interface is a marker interface to indicate that the events it encodes will have names on them.
    */
   public interface NamedEventEncoder<T> extends EventEncoder<T> {}
 
   /**
    * An event encoder that encodes multiple arguments.
-   *
+   * <p>
    * Primarily a convenience interface to provide an implementation of <code>encodeEvent</code> that takes just the
    * event arguments and produces an unnamed event.
    */
@@ -576,17 +578,17 @@ public class SocketIOEventCodec<In, Out> {
 
     @Override
     default SocketIOEvent encodeEvent(T t) {
-      return SocketIOEvent.unnamed(JavaConverters.asScalaBuffer(encodeArgs(t)).toSeq(), Option.apply(null));
+      return SocketIOEvent.unnamed(CollectionConverters.asScala(encodeArgs(t)).toSeq(), Option.apply(null));
     }
   }
 
   /**
    * An event encoder that just encodes a single argument.
-   *
+   * <p>
    * This encoder implements both {@link MultiArgumentEncoder} and {@link EventEncoder}. If passed an event via the
    * <code>encodeArg</code> or the <code>encodeEvent</code> method, it will encode the passed in event as a singleton
    * argument.
-   *
+   * <p>
    * It can be used as a whole event encoder for events that are expected to only have one argument, or it can be
    * combined with other encoders to allow encoding multiple arguments, via the <code>and</code> method.
    */
@@ -600,14 +602,12 @@ public class SocketIOEventCodec<In, Out> {
      * @return An encoder that encodes two arguments from a {@link Pair} of arguments.
      */
     default <T2> TwoArgumentEncoder<T, T2> and(SingleArgumentEncoder<T2> encoder) {
-      return args -> {
-        return Arrays.asList(encodeArg(args.first()), encoder.encodeArg(args.second()));
-      };
+      return args -> Arrays.asList(encodeArg(args.first()), encoder.encodeArg(args.second()));
     }
 
     /**
      * Combine this encoder with an argument decoder to create an encoder that encodes events that have acks.
-     *
+     * <p>
      * The passed in decoder will be used when the client invokes the ack to decode the arguments it passes to the
      * events ack function.
      *
@@ -616,8 +616,8 @@ public class SocketIOEventCodec<In, Out> {
      */
     default <A> EventEncoder<Pair<T, Consumer<A>>> withAckDecoder(MultiArgumentDecoder<A> decoder) {
       return pair -> {
-        return SocketIOEvent.unnamed(JavaConverters.asScalaBuffer(encodeArgs(pair.first())).toSeq(), Some.<SocketIOEventAck>apply(args ->
-          pair.second().accept(decoder.decodeArgs(JavaConverters.seqAsJavaList(args)))
+        return SocketIOEvent.unnamed(CollectionConverters.asScala(encodeArgs(pair.first())).toSeq(), Some.<SocketIOEventAck>apply(args ->
+          pair.second().accept(decoder.decodeArgs(CollectionConverters.asJava(args)))
         ));
       };
     }
@@ -630,11 +630,11 @@ public class SocketIOEventCodec<In, Out> {
 
   /**
    * An event encoder that just encodes two arguments.
-   *
+   * <p>
    * This encoder implements both {@link MultiArgumentEncoder} and {@link EventEncoder}. If passed an event via the
    * <code>encodeArg</code> or the <code>encodeEvent</code> method, it will encode the passed in event as two
    * arguments.
-   *
+   * <p>
    * It can be used as a whole event encoder for events that are expected to only have two arguments, or it can be
    * combined with other encoders to allow encoding more arguments, via the <code>and</code> method.
    */
@@ -657,7 +657,7 @@ public class SocketIOEventCodec<In, Out> {
 
     /**
      * Combine this encoder with an argument decoder to create an encoder that encodes events that have acks.
-     *
+     * <p>
      * The passed in decoder will be used when the client invokes the ack to decode the arguments it passes to the
      * events ack function.
      *
@@ -666,9 +666,9 @@ public class SocketIOEventCodec<In, Out> {
      */
     default <A> EventEncoder<F.Tuple3<T1, T2, Consumer<A>>> withAckDecoder(MultiArgumentDecoder<A> decoder) {
       return tuple -> {
-        return SocketIOEvent.unnamed(JavaConverters.asScalaBuffer(encodeArgs(Pair.create(tuple._1, tuple._2))).toSeq(),
+        return SocketIOEvent.unnamed(CollectionConverters.asScala(encodeArgs(Pair.create(tuple._1, tuple._2))).toSeq(),
                 Some.<SocketIOEventAck>apply(args ->
-                  tuple._3.accept(decoder.decodeArgs(JavaConverters.seqAsJavaList(args)))
+                  tuple._3.accept(decoder.decodeArgs(CollectionConverters.asJava(args)))
                 ));
       };
     }
@@ -676,11 +676,11 @@ public class SocketIOEventCodec<In, Out> {
 
   /**
    * An event encoder that just encodes three arguments.
-   *
+   * <p>
    * This encoder implements both {@link MultiArgumentEncoder} and {@link EventEncoder}. If passed an event via the
    * <code>encodeArg</code> or the <code>encodeEvent</code> method, it will encode the passed in event as three
    * arguments.
-   *
+   * <p>
    * It can be used as a whole event encoder for events that are expected to only have three arguments, or it can be
    * combined with other encoders to allow encoding more arguments, via the <code>and</code> method.
    */
@@ -703,7 +703,7 @@ public class SocketIOEventCodec<In, Out> {
 
     /**
      * Combine this encoder with an argument decoder to create an encoder that encodes events that have acks.
-     *
+     * <p>
      * The passed in decoder will be used when the client invokes the ack to decode the arguments it passes to the
      * events ack function.
      *
@@ -712,9 +712,9 @@ public class SocketIOEventCodec<In, Out> {
      */
     default <A> EventEncoder<F.Tuple4<T1, T2, T3, Consumer<A>>> withAckDecoder(MultiArgumentDecoder<A> decoder) {
       return tuple -> {
-        return SocketIOEvent.unnamed(JavaConverters.asScalaBuffer(encodeArgs(new F.Tuple3<>(tuple._1, tuple._2, tuple._3))).toSeq(),
+        return SocketIOEvent.unnamed(CollectionConverters.asScala(encodeArgs(new F.Tuple3<>(tuple._1, tuple._2, tuple._3))).toSeq(),
                 Some.<SocketIOEventAck>apply(args ->
-                  tuple._4.accept(decoder.decodeArgs(JavaConverters.seqAsJavaList(args)))
+                  tuple._4.accept(decoder.decodeArgs(CollectionConverters.asJava(args)))
                 ));
       };
     }

@@ -1,9 +1,8 @@
 package chat;
 
-import akka.actor.ExtendedActorSystem;
-import akka.serialization.SerializerWithStringManifest;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.val;
+import org.apache.pekko.actor.ExtendedActorSystem;
+import org.apache.pekko.serialization.SerializerWithStringManifest;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -13,7 +12,7 @@ public class ChatEventSerializer extends SerializerWithStringManifest {
   private final ObjectMapper mapper = new ObjectMapper();
 
   public ChatEventSerializer(ExtendedActorSystem system) {
-    identifier = system.settings().config().getInt("akka.actor.serialization-identifiers.\"" + getClass().getName() + "\"");
+    identifier = system.settings().config().getInt("pekko.actor.serialization-identifiers.\"" + getClass().getName() + "\"");
   }
 
   @Override
@@ -36,7 +35,7 @@ public class ChatEventSerializer extends SerializerWithStringManifest {
 
   @Override
   public byte[] toBinary(Object o) {
-    val baos = new ByteArrayOutputStream();
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
     try {
       mapper.writeValue(baos, o);
     } catch (IOException e) {
